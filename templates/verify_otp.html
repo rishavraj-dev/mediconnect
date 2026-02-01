@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify OTP | MediConnect</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="auth-page">
+    <div class="otp-container">
+        <div class="otp-card">
+            <div class="otp-icon">
+                <i class="fas fa-envelope-open-text"></i>
+            </div>
+            
+            <h2>Verify Your Email</h2>
+            <p class="otp-subtitle">We've sent a 6-digit verification code to your email address. Please check your inbox and enter the code below.</p>
+            
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <div class="alert alert-error">
+                        <i class="fas fa-times-circle"></i> {{ messages[0] }}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" class="otp-form">
+                <div class="otp-input-group">
+                    <label><i class="fas fa-key"></i> Enter OTP Code</label>
+                    <input type="text" name="otp" placeholder="000000" maxlength="6" pattern="\d{6}" required autofocus autocomplete="off">
+                    <small>Enter the 6-digit code sent to your email</small>
+                </div>
+
+                <button type="submit" class="btn-submit">
+                    <i class="fas fa-check-circle"></i> Verify & Complete Registration
+                </button>
+            </form>
+
+            <div class="otp-footer">
+                <p>Didn't receive the code?</p>
+                <button class="btn-resend" onclick="alert('Resend functionality coming soon!')">
+                    <i class="fas fa-redo"></i> Resend Code
+                </button>
+                <p class="otp-note"><i class="fas fa-info-circle"></i> The code expires in 10 minutes</p>
+            </div>
+
+            <div class="back-link">
+                <a href="/"><i class="fas fa-arrow-left"></i> Back to Home</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Auto-format OTP input
+        const otpInput = document.querySelector('input[name="otp"]');
+        otpInput.addEventListener('input', function(e) {
+            this.value = this.value.replace(/\D/g, '');
+        });
+    </script>
+</body>
+</html>

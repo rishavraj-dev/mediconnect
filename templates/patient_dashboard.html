@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Dashboard | MediConnect</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="dashboard-page">
+    <!-- Dashboard Header -->
+    <header class="dashboard-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo"><i class="fas fa-heartbeat"></i> MediConnect</div>
+                <div class="header-right">
+                    <div class="user-info">
+                        <i class="fas fa-user-circle"></i>
+                        <span>{{ user.name }}</span>
+                    </div>
+                    <a href="{{ url_for('auth.logout') }}" class="btn-logout">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Dashboard -->
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="dashboard-sidebar">
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active">
+                    <i class="fas fa-th-large"></i> Dashboard
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="fas fa-calendar-check"></i> My Appointments
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="fas fa-search"></i> Find Doctors
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="fas fa-file-medical"></i> Medical Records
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="fas fa-prescription"></i> Prescriptions
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="fas fa-user-circle"></i> My Profile
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="fas fa-cog"></i> Settings
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="dashboard-main">
+            <!-- Welcome Section -->
+            <div class="welcome-section">
+                <div>
+                    <h1>Welcome, {{ user.name }}! 👋</h1>
+                    <p>Here's what's happening with your health today</p>
+                </div>
+                <button class="btn-primary-action">
+                    <i class="fas fa-plus"></i> Book New Appointment
+                </button>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="stats-grid">
+                <div class="stat-card blue">
+                    <div class="stat-icon">
+                        <i class="fas fa-calendar-check"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>0</h3>
+                        <p>Upcoming Appointments</p>
+                    </div>
+                </div>
+                <div class="stat-card green">
+                    <div class="stat-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>0</h3>
+                        <p>Completed Consultations</p>
+                    </div>
+                </div>
+                <div class="stat-card orange">
+                    <div class="stat-icon">
+                        <i class="fas fa-prescription"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>0</h3>
+                        <p>Active Prescriptions</p>
+                    </div>
+                </div>
+                <div class="stat-card purple">
+                    <div class="stat-icon">
+                        <i class="fas fa-file-medical"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>0</h3>
+                        <p>Medical Reports</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="section-card">
+                <h2><i class="fas fa-bolt"></i> Quick Actions</h2>
+                <div class="quick-actions-grid">
+                    <button class="action-card">
+                        <i class="fas fa-video"></i>
+                        <h3>Video Consultation</h3>
+                        <p>Connect with a doctor instantly</p>
+                    </button>
+                    <button class="action-card">
+                        <i class="fas fa-calendar-plus"></i>
+                        <h3>Schedule Appointment</h3>
+                        <p>Book for a later time</p>
+                    </button>
+                    <button class="action-card">
+                        <i class="fas fa-file-upload"></i>
+                        <h3>Upload Reports</h3>
+                        <p>Share your medical documents</p>
+                    </button>
+                    <button class="action-card">
+                        <i class="fas fa-pills"></i>
+                        <h3>Order Medicine</h3>
+                        <p>Get medicines delivered home</p>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Upcoming Appointments -->
+            <div class="section-card">
+                <div class="section-header">
+                    <h2><i class="fas fa-calendar-alt"></i> Upcoming Appointments</h2>
+                    <a href="#" class="link-view-all">View All <i class="fas fa-arrow-right"></i></a>
+                </div>
+                <div class="empty-state">
+                    <i class="fas fa-calendar-times"></i>
+                    <h3>No Upcoming Appointments</h3>
+                    <p>You don't have any appointments scheduled. Book a consultation with our expert doctors.</p>
+                    <button class="btn-secondary-action">
+                        <i class="fas fa-search"></i> Find a Doctor
+                    </button>
+                </div>
+            </div>
+
+            <!-- Health Tips -->
+            <div class="section-card">
+                <h2><i class="fas fa-lightbulb"></i> Health Tips for You</h2>
+                <div class="tips-grid">
+                    <div class="tip-card">
+                        <i class="fas fa-heart"></i>
+                        <h4>Stay Hydrated</h4>
+                        <p>Drink at least 8 glasses of water daily to maintain optimal health.</p>
+                    </div>
+                    <div class="tip-card">
+                        <i class="fas fa-running"></i>
+                        <h4>Regular Exercise</h4>
+                        <p>30 minutes of physical activity can significantly improve your wellbeing.</p>
+                    </div>
+                    <div class="tip-card">
+                        <i class="fas fa-moon"></i>
+                        <h4>Quality Sleep</h4>
+                        <p>Aim for 7-8 hours of sleep each night for better health and energy.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

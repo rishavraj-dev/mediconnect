@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor Dashboard | MediConnect</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="dashboard-page doctor-dashboard">
+    <!-- Dashboard Header -->
+    <header class="dashboard-header doctor-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo"><i class="fas fa-heartbeat"></i> MediConnect</div>
+                <div class="header-right">
+                    <div class="user-info">
+                        <i class="fas fa-user-md"></i>
+                        <div>
+                            <strong>Dr. {{ user.name }}</strong>
+                            <small>{{ user.specialization }}</small>
+                        </div>
+                    </div>
+                    <a href="{{ url_for('auth.logout') }}" class="btn-logout">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Dashboard -->
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="dashboard-sidebar doctor-sidebar">
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active">
+                    <i class="fas fa-th-large"></i> Dashboard
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="fas fa-calendar-alt"></i> Appointments
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="fas fa-users"></i> My Patients
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="fas fa-clock"></i> Schedule
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="fas fa-wallet"></i> Earnings
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="fas fa-star"></i> Reviews
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="fas fa-user-circle"></i> Profile
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="fas fa-cog"></i> Settings
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="dashboard-main">
+            <!-- Welcome Section -->
+            <div class="welcome-section doctor-welcome">
+                <div>
+                    <h1>Welcome, Dr. {{ user.name }}! 👨‍⚕️</h1>
+                    <p>You have a great day ahead managing patient care</p>
+                </div>
+                <div class="doctor-badge">
+                    <i class="fas fa-id-card"></i>
+                    <div>
+                        <small>License ID</small>
+                        <strong>{{ user.license_id }}</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="stats-grid">
+                <div class="stat-card green">
+                    <div class="stat-icon">
+                        <i class="fas fa-calendar-check"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>0</h3>
+                        <p>Today's Appointments</p>
+                    </div>
+                </div>
+                <div class="stat-card blue">
+                    <div class="stat-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>0</h3>
+                        <p>Total Patients</p>
+                    </div>
+                </div>
+                <div class="stat-card orange">
+                    <div class="stat-icon">
+                        <i class="fas fa-rupee-sign"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>₹0</h3>
+                        <p>Monthly Earnings</p>
+                    </div>
+                </div>
+                <div class="stat-card purple">
+                    <div class="stat-icon">
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>5.0</h3>
+                        <p>Average Rating</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="section-card">
+                <h2><i class="fas fa-bolt"></i> Quick Actions</h2>
+                <div class="quick-actions-grid">
+                    <button class="action-card success">
+                        <i class="fas fa-video"></i>
+                        <h3>Start Consultation</h3>
+                        <p>Begin video call with patient</p>
+                    </button>
+                    <button class="action-card info">
+                        <i class="fas fa-calendar-plus"></i>
+                        <h3>Set Availability</h3>
+                        <p>Update your schedule</p>
+                    </button>
+                    <button class="action-card warning">
+                        <i class="fas fa-prescription"></i>
+                        <h3>Write Prescription</h3>
+                        <p>Create digital prescription</p>
+                    </button>
+                    <button class="action-card primary">
+                        <i class="fas fa-chart-line"></i>
+                        <h3>View Analytics</h3>
+                        <p>Check your performance</p>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Today's Appointments -->
+            <div class="section-card">
+                <div class="section-header">
+                    <h2><i class="fas fa-calendar-day"></i> Today's Appointments</h2>
+                    <a href="#" class="link-view-all">View All <i class="fas fa-arrow-right"></i></a>
+                </div>
+                <div class="empty-state">
+                    <i class="fas fa-calendar-times"></i>
+                    <h3>No Appointments Today</h3>
+                    <p>You don't have any consultations scheduled for today. Time to relax or update your availability.</p>
+                    <button class="btn-secondary-action">
+                        <i class="fas fa-clock"></i> Set Available Hours
+                    </button>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="section-card">
+                <h2><i class="fas fa-history"></i> Recent Activity</h2>
+                <div class="empty-state small">
+                    <i class="fas fa-clipboard-list"></i>
+                    <p>No recent activity to display</p>
+                </div>
+            </div>
+
+            <!-- Performance Overview -->
+            <div class="two-column-grid">
+                <div class="section-card">
+                    <h2><i class="fas fa-chart-pie"></i> This Month</h2>
+                    <div class="performance-stats">
+                        <div class="perf-item">
+                            <span>Consultations</span>
+                            <strong>0</strong>
+                        </div>
+                        <div class="perf-item">
+                            <span>New Patients</span>
+                            <strong>0</strong>
+                        </div>
+                        <div class="perf-item">
+                            <span>Revenue</span>
+                            <strong>₹0</strong>
+                        </div>
+                        <div class="perf-item">
+                            <span>Avg. Rating</span>
+                            <strong>5.0 ⭐</strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="section-card">
+                    <h2><i class="fas fa-trophy"></i> Your Rank</h2>
+                    <div class="rank-info">
+                        <div class="rank-badge">
+                            <i class="fas fa-medal"></i>
+                            <h3>New Doctor</h3>
+                        </div>
+                        <p>Complete 10 consultations to reach Bronze rank and unlock exclusive benefits!</p>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 0%"></div>
+                        </div>
+                        <small>0 / 10 consultations</small>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

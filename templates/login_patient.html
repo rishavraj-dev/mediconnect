@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Login | MediConnect</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="auth-page">
+    <div class="auth-container">
+        <div class="auth-left">
+            <div class="auth-branding">
+                <h1><i class="fas fa-heartbeat"></i> MediConnect</h1>
+                <p class="tagline">Your Health, Our Priority</p>
+            </div>
+            <div class="auth-illustration">
+                <i class="fas fa-user-injured"></i>
+                <h2>Welcome Back!</h2>
+                <p>Access your health records and book appointments with trusted doctors</p>
+            </div>
+            <div class="auth-features">
+                <div class="feature-item">
+                    <i class="fas fa-check-circle"></i>
+                    <span>View your consultation history</span>
+                </div>
+                <div class="feature-item">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Access digital prescriptions</span>
+                </div>
+                <div class="feature-item">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Book instant appointments</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="auth-right">
+            <div class="auth-form-container">
+                <div class="back-link">
+                    <a href="/"><i class="fas fa-arrow-left"></i> Back to Home</a>
+                </div>
+                
+                <h2>Patient Login</h2>
+                <p class="form-subtitle">Sign in to access your dashboard</p>
+                
+                {% with messages = get_flashed_messages() %}
+                    {% if messages %}
+                        <div class="alert alert-error">
+                            <i class="fas fa-exclamation-circle"></i> {{ messages[0] }}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+
+                <form action="/login/patient" method="POST" class="auth-form">
+                    <div class="form-group">
+                        <label><i class="fas fa-envelope"></i> Email Address</label>
+                        <input type="email" name="email" placeholder="yourname@example.com" required autocomplete="email">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label><i class="fas fa-lock"></i> Password</label>
+                        <input type="password" name="password" placeholder="Enter your password" required autocomplete="current-password">
+                    </div>
+
+                    <div class="form-remember">
+                        <label>
+                            <input type="checkbox" name="remember"> Remember me
+                        </label>
+                        <a href="#" class="link-primary">Forgot Password?</a>
+                    </div>
+
+                    <button type="submit" class="btn-submit">
+                        <i class="fas fa-sign-in-alt"></i> Sign In
+                    </button>
+                </form>
+
+                <div class="auth-footer">
+                    <p>Don't have an account? <a href="{{ url_for('auth.register_patient') }}" class="link-primary">Sign Up</a></p>
+                    <p class="register-switch">
+                        Are you a doctor? <a href="{{ url_for('auth.login_doctor') }}" class="link-success">Login Here</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
