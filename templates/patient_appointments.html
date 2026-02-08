@@ -154,10 +154,6 @@
                                         </a>
                                     {% endif %}
                                 </div>
-                                <details class="chat-embed">
-                                    <summary><i class="fas fa-comments"></i> Open Chat</summary>
-                                    <iframe src="{{ url_for('auth.appointment_chat', appointment_id=appt.id) }}" title="Chat"></iframe>
-                                </details>
                             </div>
                         {% endfor %}
                     </div>

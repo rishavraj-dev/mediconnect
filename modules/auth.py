@@ -729,44 +729,42 @@ def book_appointment():
         doctor["rating_avg"] = avg
         doctor["rating_count"] = count
 
-    followup_emails = db.appointments.distinct(
-        "doctor_email",
-        {"patient_email": session['user']['email']}
-    )
-    followup_emails += db.followups.distinct(
-        "doctor_email",
-        {"patient_email": session['user']['email']}
-    )
-    followup_emails = list({email for email in followup_emails if email})
     followup_doctors = []
-    if followup_emails:
-        followup_doctors = list(db.users.find(
-            {"email": {"$in": followup_emails}, "role": "doctor"},
-            {"password": 0}
-        ).sort("name", 1))
-        for doctor in followup_doctors:
-            email = doctor.get("email")
-            count = rating_counts.get(email, 0)
-            avg = round(rating_totals.get(email, 0) / count, 1) if count else 0
-            doctor["rating_avg"] = avg
-            doctor["rating_count"] = count
+    seen_followup = set()
+    appointment_snapshots = list(db.appointments.find(
+        {"patient_email": session['user']['email']},
+        {"doctor_email": 1, "doctor_name": 1, "doctor_specialization": 1}
+    ))
+    for item in appointment_snapshots:
+        email = item.get("doctor_email")
+        if not email or email in seen_followup:
+            continue
+        seen_followup.add(email)
+        followup_doctors.append({
+            "email": email,
+            "name": item.get("doctor_name") or "Unknown",
+            "specialization": item.get("doctor_specialization") or "General",
+            "rating_avg": round(rating_totals.get(email, 0) / rating_counts.get(email, 1), 1) if rating_counts.get(email) else 0,
+            "rating_count": rating_counts.get(email, 0)
+        })
 
-        if not followup_doctors:
-            snapshots = list(db.appointments.find(
-                {"patient_email": session['user']['email'], "doctor_email": {"$in": followup_emails}},
-                {"doctor_email": 1, "doctor_name": 1, "doctor_specialization": 1}
-            ))
-            for item in snapshots:
-                email = item.get("doctor_email")
-                if not email:
-                    continue
-                followup_doctors.append({
-                    "email": email,
-                    "name": item.get("doctor_name") or "Unknown",
-                    "specialization": item.get("doctor_specialization") or "General",
-                    "rating_avg": rating_totals.get(email, 0),
-                    "rating_count": rating_counts.get(email, 0)
-                })
+    followup_emails = db.followups.distinct(
+        "doctor_email",
+        {"patient_email": session['user']['email']}
+    )
+    for email in followup_emails:
+        if not email or email in seen_followup:
+            continue
+        seen_followup.add(email)
+        followup_doctors.append({
+            "email": email,
+            "name": "Unknown",
+            "specialization": "General",
+            "rating_avg": round(rating_totals.get(email, 0) / rating_counts.get(email, 1), 1) if rating_counts.get(email) else 0,
+            "rating_count": rating_counts.get(email, 0)
+        })
+
+    followup_doctors.sort(key=lambda item: item.get("name", "").lower())
 
     return render_template(
         'book_appointment.html',
