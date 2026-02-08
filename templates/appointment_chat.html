@@ -40,6 +40,13 @@
             </div>
 
             <div class="section-card chat-container">
+                <div class="chat-header">
+                    <div>
+                        <h2>Secure Appointment Chat</h2>
+                        <p>Messages are encrypted and visible only to the doctor and patient.</p>
+                    </div>
+                    <div class="chat-status">Live</div>
+                </div>
                 <div class="chat-messages" id="chat-messages">
                     {% for msg in messages %}
                         <div class="chat-message {% if msg.sender_email == user.email %}self{% endif %}">
@@ -70,6 +77,8 @@
         const textEl = document.getElementById('chat-text');
 
         socket.emit('join_appointment', { appointment_id: appointmentId });
+
+        messagesEl.scrollTop = messagesEl.scrollHeight;
 
         formEl.addEventListener('submit', (event) => {
             event.preventDefault();

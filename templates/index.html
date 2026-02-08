@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MediConnect | Bridging Healthcare Across India</title>
+    <title>MediConnect | Connected Care Across India</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -21,7 +21,8 @@
                 <li><a href="#stats">Impact</a></li>
                 <li><a href="#doctors">For Doctors</a></li>
                 <li><a href="{{ url_for('auth.login_patient') }}">Patient Login</a></li>
-                <li><a href="{{ url_for('auth.login_doctor') }}" style="color: var(--success);">Doctor Login</a></li>
+                <li><a href="{{ url_for('auth.login_doctor') }}" style="color: var(--primary);">Doctor Login</a></li>
+                <li><a href="{{ url_for('auth.admin_login') }}">Admin Login</a></li>
                 <li><a href="{{ url_for('auth.register_patient') }}" class="btn-nav-primary">Get Started</a></li>
             </ul>
         </nav>
@@ -32,10 +33,10 @@
         <div class="hero-overlay"></div>
         <div class="container hero-content">
             <div class="hero-badge">
-                <i class="fas fa-shield-alt"></i> Trusted by 50,000+ Patients
+                <i class="fas fa-shield-alt"></i> Secure, clinician-led telemedicine
             </div>
-            <h1>Healthcare Without Boundaries</h1>
-            <p class="hero-subtitle">Connect with India's top specialists from the comfort of your home. Quality healthcare is now accessible to everyone, everywhere.</p>
+            <h1>Care That Travels With You</h1>
+            <p class="hero-subtitle">MediConnect links patients with verified specialists, delivering dependable consultations, records, and follow-ups with clinical-grade security.</p>
             <div class="hero-actions">
                 <a href="{{ url_for('auth.register_patient') }}" class="btn-hero-primary">
                     <i class="fas fa-user-plus"></i> Join as Patient
@@ -47,15 +48,15 @@
             <div class="hero-stats">
                 <div class="stat-item">
                     <strong>2,500+</strong>
-                    <span>Verified Doctors</span>
+                    <span>Verified Specialists</span>
                 </div>
                 <div class="stat-item">
                     <strong>50K+</strong>
-                    <span>Consultations</span>
+                    <span>Completed Consultations</span>
                 </div>
                 <div class="stat-item">
                     <strong>98%</strong>
-                    <span>Satisfaction Rate</span>
+                    <span>Patient Satisfaction</span>
                 </div>
             </div>
         </div>
@@ -66,50 +67,50 @@
         <div class="container">
             <div class="section-header">
                 <h2>Why Choose MediConnect?</h2>
-                <p>Experience healthcare that's accessible, affordable, and always available</p>
+                <p>Professional care delivery with modern coordination and patient-first access</p>
             </div>
             <div class="features-grid">
                 <div class="feature-card">
                     <div class="feature-icon">
                         <i class="fas fa-video"></i>
                     </div>
-                    <h3>Instant Video Consultations</h3>
-                    <p>Connect with specialists via secure HD video calls. No travel, no waiting rooms, just quality care.</p>
+                    <h3>Secure Video Consultations</h3>
+                    <p>Meet specialists through encrypted HD calls with clear documentation and follow-up continuity.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
                         <i class="fas fa-clock"></i>
                     </div>
-                    <h3>24/7 Availability</h3>
-                    <p>Access healthcare round the clock. Emergency consultations available anytime, anywhere.</p>
+                    <h3>Extended Availability</h3>
+                    <p>Book appointments beyond clinic hours and connect when care is most needed.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
                         <i class="fas fa-rupee-sign"></i>
                     </div>
-                    <h3>Affordable Pricing</h3>
-                    <p>Consultations starting at ₹299. Save on travel costs and get quality care at fair prices.</p>
+                    <h3>Transparent Pricing</h3>
+                    <p>Clear, upfront consultation pricing with no hidden platform charges.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
                         <i class="fas fa-file-prescription"></i>
                     </div>
                     <h3>Digital Prescriptions</h3>
-                    <p>Receive instant digital prescriptions and medical reports. Access your health records anytime.</p>
+                    <p>Receive structured prescriptions and records accessible across your care journey.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
                         <i class="fas fa-user-shield"></i>
                     </div>
                     <h3>Privacy & Security</h3>
-                    <p>Your data is encrypted and secure. We follow strict HIPAA-compliant protocols.</p>
+                    <p>Data protection with encryption, access controls, and secure storage practices.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
                         <i class="fas fa-language"></i>
                     </div>
                     <h3>Multi-Language Support</h3>
-                    <p>Consult in Hindi, English, Bengali, Tamil, and 10+ regional languages.</p>
+                    <p>Consult in Hindi, English, Bengali, Tamil, and other regional languages.</p>
                 </div>
             </div>
         </div>
@@ -119,29 +120,29 @@
     <section id="how-it-works" class="how-it-works">
         <div class="container">
             <div class="section-header">
-                <h2>Get Started in 3 Simple Steps</h2>
-                <p>From registration to consultation in under 5 minutes</p>
+                <h2>Get Started in Three Steps</h2>
+                <p>A streamlined flow from registration to consultation</p>
             </div>
             <div class="steps-grid">
                 <div class="step-card">
                     <div class="step-number">1</div>
                     <div class="step-icon"><i class="fas fa-user-plus"></i></div>
-                    <h3>Create Account</h3>
-                    <p>Sign up in 30 seconds with email verification. Your medical profile is completely secure.</p>
+                    <h3>Create an Account</h3>
+                    <p>Register with verified contact details and a secure patient profile.</p>
                 </div>
                 <div class="step-arrow"><i class="fas fa-arrow-right"></i></div>
                 <div class="step-card">
                     <div class="step-number">2</div>
                     <div class="step-icon"><i class="fas fa-search"></i></div>
-                    <h3>Find Your Doctor</h3>
-                    <p>Browse specialists by expertise, experience, and ratings. Choose the perfect match for you.</p>
+                    <h3>Select a Specialist</h3>
+                    <p>Search by specialty, experience, and availability to match your care needs.</p>
                 </div>
                 <div class="step-arrow"><i class="fas fa-arrow-right"></i></div>
                 <div class="step-card">
                     <div class="step-number">3</div>
                     <div class="step-icon"><i class="fas fa-video"></i></div>
-                    <h3>Consult Instantly</h3>
-                    <p>Book appointment and connect via video call. Get prescriptions and follow-ups digitally.</p>
+                    <h3>Consult Securely</h3>
+                    <p>Complete a video consultation and receive prescriptions and follow-ups digitally.</p>
                 </div>
             </div>
         </div>
@@ -159,7 +160,7 @@
                 <div class="stat-box">
                     <i class="fas fa-map-marker-alt"></i>
                     <h3>350+</h3>
-                    <p>Cities Covered</p>
+                    <p>Cities Served</p>
                 </div>
                 <div class="stat-box">
                     <i class="fas fa-award"></i>
@@ -169,7 +170,7 @@
                 <div class="stat-box">
                     <i class="fas fa-headset"></i>
                     <h3>15 Min</h3>
-                    <p>Avg Response Time</p>
+                    <p>Average Response Time</p>
                 </div>
             </div>
         </div>
@@ -180,14 +181,14 @@
         <div class="container">
             <div class="doctors-content">
                 <div class="doctors-text">
-                    <h2>Are You a Doctor?</h2>
-                    <p class="lead">Join India's fastest-growing telemedicine platform and expand your practice digitally.</p>
+                    <h2>For Medical Professionals</h2>
+                    <p class="lead">Grow your digital practice with structured scheduling, secure records, and trusted patient access.</p>
                     <ul class="benefits-list">
                         <li><i class="fas fa-check-circle"></i> Reach patients across India from your clinic</li>
-                        <li><i class="fas fa-check-circle"></i> Flexible hours - consult on your schedule</li>
-                        <li><i class="fas fa-check-circle"></i> Earn additional income with online consultations</li>
-                        <li><i class="fas fa-check-circle"></i> Zero platform fees for first 3 months</li>
-                        <li><i class="fas fa-check-circle"></i> Get verified in 24 hours with NMC credentials</li>
+                        <li><i class="fas fa-check-circle"></i> Flexible hours with structured availability</li>
+                        <li><i class="fas fa-check-circle"></i> Secure documentation for every consultation</li>
+                        <li><i class="fas fa-check-circle"></i> Transparent payouts and practice insights</li>
+                        <li><i class="fas fa-check-circle"></i> Fast verification with credentials</li>
                     </ul>
                     <a href="{{ url_for('auth.register_doctor') }}" class="btn-doctors">
                         <i class="fas fa-user-md"></i> Register as Doctor
@@ -203,9 +204,9 @@
     <!-- CTA Section -->
     <section class="cta-section">
         <div class="container">
-            <h2>Ready to Transform Your Healthcare Experience?</h2>
-            <p>Join thousands of satisfied patients who've already made the switch to smart healthcare</p>
-            <a href="{{ url_for('auth.register_patient') }}" class="btn-cta">Get Started Now <i class="fas fa-arrow-right"></i></a>
+            <h2>Ready to Experience Modern Care?</h2>
+            <p>Join thousands of patients and clinicians who rely on MediConnect every day.</p>
+            <a href="{{ url_for('auth.register_patient') }}" class="btn-cta">Create Your Account <i class="fas fa-arrow-right"></i></a>
         </div>
     </section>
 
@@ -244,6 +245,7 @@
                 <h4>Company</h4>
                 <ul>
                     <li><a href="#how-it-works">About Us</a></li>
+                    <li><a href="{{ url_for('auth.admin_login') }}">Admin Login</a></li>
                     <li><a href="mailto:privacy@mediconnect.app">Privacy Policy</a></li>
                     <li><a href="mailto:legal@mediconnect.app">Terms of Service</a></li>
                     <li><a href="mailto:hello@mediconnect.app">Contact</a></li>
