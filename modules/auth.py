@@ -38,8 +38,10 @@ def _send_email(to_address, subject, body):
                       recipients=[to_address])
         msg.body = body
         mail.send(msg)
+        current_app.logger.info("Email sent to %s with subject '%s'", to_address, subject)
         return True
     except Exception:
+        current_app.logger.exception("Email send failed to %s with subject '%s'", to_address, subject)
         return False
 
 # --- PATIENT ROUTE ---
@@ -509,6 +511,11 @@ def doctor_appointments():
         {"doctor_email": session['user']['email']}
     ).sort("created_at", -1))
 
+    doctors = list(db.users.find(
+        {"role": "doctor", "email": {"$ne": session['user']['email']}},
+        {"password": 0}
+    ).sort("name", 1))
+
     now = datetime.now()
     for appt in appointments:
         appt["id"] = str(appt["_id"])
@@ -525,7 +532,7 @@ def doctor_appointments():
             except Exception:
                 appt["call_active"] = False
 
-    return render_template('doctor_appointments.html', user=session['user'], appointments=appointments)
+    return render_template('doctor_appointments.html', user=session['user'], appointments=appointments, doctors=doctors)
 
 @auth_bp.route('/doctor/patients')
 def doctor_patients():
@@ -778,7 +785,9 @@ def create_appointment():
             f"Hello Dr. {doctor.get('name')},\n\n"
             f"You have a new appointment request from {session['user']['name']}.\n"
             f"Date: {date_value}\nTime: {time_value}\n"
-            f"Issue: {issue_category}\n\n"
+            f"Issue: {issue_category}\n"
+            f"Details: {issue_detail or 'N/A'}\n"
+            f"Reason: {reason or 'N/A'}\n\n"
             "Please log in to MediConnect to review the request."
         )
         _send_email(doctor.get('email'), "New Appointment Request", body)
@@ -855,7 +864,8 @@ def update_appointment_status(appointment_id, action):
         body = (
             f"Hello {appointment.get('patient_name')},\n\n"
             f"Your appointment with Dr. {appointment.get('doctor_name')} has been {status}.\n"
-            f"Date: {appointment.get('date')}\nTime: {appointment.get('time')}\n\n"
+            f"Date: {appointment.get('date')}\nTime: {appointment.get('time')}\n"
+            f"Issue: {appointment.get('issue_category')}\n\n"
             "Thank you for using MediConnect."
         )
         _send_email(appointment.get("patient_email"), "Appointment Update", body)
@@ -889,6 +899,7 @@ def complete_appointment(appointment_id):
         body = (
             f"Hello {appointment.get('patient_name')},\n\n"
             f"Your appointment with Dr. {appointment.get('doctor_name')} is marked completed.\n"
+            f"Date: {appointment.get('date')}\nTime: {appointment.get('time')}\n\n"
             "You can review your consultation notes and prescriptions in your dashboard."
         )
         _send_email(appointment.get("patient_email"), "Appointment Completed", body)
@@ -1012,6 +1023,7 @@ def cancel_appointment(appointment_id):
             f"Hello Dr. {appointment.get('doctor_name')},\n\n"
             f"The appointment with {appointment.get('patient_name')} has been cancelled by the patient.\n"
             f"Date: {appointment.get('date')}\nTime: {appointment.get('time')}\n"
+            f"Issue: {appointment.get('issue_category')}\n"
         )
         _send_email(appointment.get("doctor_email"), "Appointment Cancelled", body)
 
@@ -1043,6 +1055,83 @@ def update_consultation_notes(appointment_id):
 
     flash("Consultation notes updated")
     return redirect(url_for('auth.doctor_dashboard'))
+
+# --- REROUTE APPOINTMENT (DOCTOR) ---
+@auth_bp.route('/appointments/<appointment_id>/reroute', methods=['POST'])
+def reroute_appointment(appointment_id):
+    if 'user' not in session or session['user']['role'] != 'doctor':
+        flash("Please login to manage appointments")
+        return redirect(url_for('auth.login_doctor'))
+
+    from app import db
+    new_doctor_email = request.form.get('new_doctor_email')
+    if not new_doctor_email:
+        flash("Please select a doctor to reroute")
+        return redirect(url_for('auth.doctor_appointments'))
+
+    try:
+        appointment_object_id = ObjectId(appointment_id)
+    except Exception:
+        flash("Invalid appointment")
+        return redirect(url_for('auth.doctor_appointments'))
+
+    appointment = db.appointments.find_one({
+        "_id": appointment_object_id,
+        "doctor_email": session['user']['email']
+    })
+    if not appointment:
+        flash("Appointment not found")
+        return redirect(url_for('auth.doctor_appointments'))
+
+    if new_doctor_email == appointment.get("doctor_email"):
+        flash("Select a different doctor")
+        return redirect(url_for('auth.doctor_appointments'))
+
+    if db.blocks.find_one({"doctor_email": new_doctor_email, "patient_email": appointment.get("patient_email")}):
+        flash("This doctor is not available for this patient")
+        return redirect(url_for('auth.doctor_appointments'))
+
+    new_doctor = db.users.find_one({"email": new_doctor_email, "role": "doctor"})
+    if not new_doctor:
+        flash("Selected doctor not found")
+        return redirect(url_for('auth.doctor_appointments'))
+
+    db.appointments.update_one(
+        {"_id": appointment_object_id},
+        {"$set": {
+            "doctor_email": new_doctor.get("email"),
+            "doctor_name": new_doctor.get("name"),
+            "doctor_specialization": new_doctor.get("specialization"),
+            "status": "pending",
+            "updated_at": datetime.utcnow(),
+            "rerouted_from": session['user']['email']
+        }}
+    )
+
+    if _should_send_email(db, new_doctor.get('email'), "doctor"):
+        body = (
+            f"Hello Dr. {new_doctor.get('name')},\n\n"
+            f"An appointment has been rerouted to you from Dr. {session['user'].get('name')}.\n"
+            f"Patient: {appointment.get('patient_name')}\n"
+            f"Date: {appointment.get('date')}\nTime: {appointment.get('time')}\n"
+            f"Issue: {appointment.get('issue_category')}\n"
+            f"Details: {appointment.get('issue_detail') or 'N/A'}\n\n"
+            "Please log in to MediConnect to review the request."
+        )
+        _send_email(new_doctor.get('email'), "Appointment Rerouted", body)
+
+    if _should_send_email(db, appointment.get("patient_email"), "patient"):
+        body = (
+            f"Hello {appointment.get('patient_name')},\n\n"
+            f"Your appointment has been rerouted to Dr. {new_doctor.get('name')}.\n"
+            f"Date: {appointment.get('date')}\nTime: {appointment.get('time')}\n"
+            f"Specialization: {new_doctor.get('specialization') or 'N/A'}\n\n"
+            "Please log in to MediConnect for the latest updates."
+        )
+        _send_email(appointment.get("patient_email"), "Appointment Rerouted", body)
+
+    flash("Appointment rerouted")
+    return redirect(url_for('auth.doctor_appointments'))
 
 # --- BLOCK/REPORT PATIENT (DOCTOR) ---
 @auth_bp.route('/doctor/patients/<patient_email>/block', methods=['POST'])

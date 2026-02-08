@@ -101,6 +101,17 @@
                                             <i class="fas fa-times"></i> Reject
                                         </button>
                                     </form>
+                                    <form method="POST" action="{{ url_for('auth.reroute_appointment', appointment_id=appt.id) }}">
+                                        <select name="new_doctor_email" required>
+                                            <option value="" disabled selected>Reroute to doctor</option>
+                                            {% for doc in doctors %}
+                                                <option value="{{ doc.email }}">Dr. {{ doc.name }} - {{ doc.specialization }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <button class="btn-primary-action btn-compact" type="submit">
+                                            <i class="fas fa-share"></i> Reroute
+                                        </button>
+                                    </form>
                                 </div>
                             </div>
                         {% endfor %}
@@ -174,6 +185,17 @@
                                     <form method="POST" action="{{ url_for('auth.complete_appointment', appointment_id=appt.id) }}">
                                         <button class="btn-success" type="submit">
                                             <i class="fas fa-check-double"></i> Mark Completed
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('auth.reroute_appointment', appointment_id=appt.id) }}">
+                                        <select name="new_doctor_email" required>
+                                            <option value="" disabled selected>Reroute to doctor</option>
+                                            {% for doc in doctors %}
+                                                <option value="{{ doc.email }}">Dr. {{ doc.name }} - {{ doc.specialization }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <button class="btn-primary-action btn-compact" type="submit">
+                                            <i class="fas fa-share"></i> Reroute
                                         </button>
                                     </form>
                                 </div>
