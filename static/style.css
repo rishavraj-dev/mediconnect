@@ -2003,6 +2003,10 @@ footer {
     gap: 12px;
 }
 
+.booking-type-toggle.top-toggle {
+    margin-bottom: 20px;
+}
+
 .radio-pill {
     position: relative;
     cursor: pointer;
@@ -2036,6 +2040,53 @@ footer {
 
 .booking-section {
     display: block;
+}
+
+.filter-grid {
+    align-items: end;
+}
+
+.filter-actions {
+    justify-content: flex-end;
+}
+
+.filter-button-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.selection-hint {
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: var(--primary-light);
+    color: var(--primary-dark);
+    font-weight: 600;
+}
+
+.doctor-card.selected {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-md);
+}
+
+.rating-line {
+    color: var(--gray);
+    font-size: 0.92rem;
+}
+
+.doctor-list-scroll {
+    max-height: 420px;
+    overflow-y: auto;
+    padding-right: 6px;
+}
+
+.filter-hint {
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px dashed var(--border);
+    color: var(--gray);
+    font-weight: 600;
+    background: var(--white);
 }
 
 .date-chip-list {
@@ -2306,6 +2357,13 @@ footer {
     border: 1px solid var(--border);
     border-radius: 8px;
     min-width: 140px;
+}
+
+.appointment-actions input[type="date"] {
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    min-width: 160px;
 }
 
 .chat-container {

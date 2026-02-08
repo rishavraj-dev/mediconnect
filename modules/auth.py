@@ -698,19 +698,82 @@ def book_appointment():
     for dept in departments:
         dept["id"] = str(dept.get("_id"))
 
-    doctor_availability = {}
-    for doctor in doctors:
-        email = doctor.get("email")
+    if not departments:
+        seen = set()
+        derived = []
+        for doctor in doctors:
+            name = _normalize_department_name(doctor.get("specialization"))
+            if not name or name.lower() in seen:
+                continue
+            seen.add(name.lower())
+            derived.append({"name": name})
+        departments = sorted(derived, key=lambda item: item.get("name", "").lower())
+
+    rating_totals = {}
+    rating_counts = {}
+    for review in db.reviews.find({}, {"doctor_email": 1, "rating": 1}):
+        email = review.get("doctor_email")
         if not email:
             continue
-        doctor_availability[email] = _get_doctor_available_dates(db, email, 60)
+        try:
+            rating_value = float(review.get("rating"))
+        except (TypeError, ValueError):
+            continue
+        rating_totals[email] = rating_totals.get(email, 0) + rating_value
+        rating_counts[email] = rating_counts.get(email, 0) + 1
+
+    for doctor in doctors:
+        email = doctor.get("email")
+        count = rating_counts.get(email, 0)
+        avg = round(rating_totals.get(email, 0) / count, 1) if count else 0
+        doctor["rating_avg"] = avg
+        doctor["rating_count"] = count
+
+    followup_emails = db.appointments.distinct(
+        "doctor_email",
+        {"patient_email": session['user']['email']}
+    )
+    followup_emails += db.followups.distinct(
+        "doctor_email",
+        {"patient_email": session['user']['email']}
+    )
+    followup_emails = list({email for email in followup_emails if email})
+    followup_doctors = []
+    if followup_emails:
+        followup_doctors = list(db.users.find(
+            {"email": {"$in": followup_emails}, "role": "doctor"},
+            {"password": 0}
+        ).sort("name", 1))
+        for doctor in followup_doctors:
+            email = doctor.get("email")
+            count = rating_counts.get(email, 0)
+            avg = round(rating_totals.get(email, 0) / count, 1) if count else 0
+            doctor["rating_avg"] = avg
+            doctor["rating_count"] = count
+
+        if not followup_doctors:
+            snapshots = list(db.appointments.find(
+                {"patient_email": session['user']['email'], "doctor_email": {"$in": followup_emails}},
+                {"doctor_email": 1, "doctor_name": 1, "doctor_specialization": 1}
+            ))
+            for item in snapshots:
+                email = item.get("doctor_email")
+                if not email:
+                    continue
+                followup_doctors.append({
+                    "email": email,
+                    "name": item.get("doctor_name") or "Unknown",
+                    "specialization": item.get("doctor_specialization") or "General",
+                    "rating_avg": rating_totals.get(email, 0),
+                    "rating_count": rating_counts.get(email, 0)
+                })
 
     return render_template(
         'book_appointment.html',
         user=session['user'],
         doctors=doctors,
         departments=departments,
-        doctor_availability=doctor_availability
+        followup_doctors=followup_doctors
     )
 
 @auth_bp.route('/patient/profile', methods=['GET', 'POST'])
@@ -1131,7 +1194,7 @@ def create_appointment():
     reason = request.form.get('reason')
     issue_category = request.form.get('issue_category')
     issue_detail = request.form.get('issue_detail')
-    general_physician = booking_type == "new"
+    general_physician = False
     symptoms = request.form.get('symptoms')
     allergies = request.form.get('allergies')
     medications = request.form.get('medications')
@@ -1148,33 +1211,26 @@ def create_appointment():
 
     doctor = None
     if booking_type == "new":
+        if not doctor_email:
+            flash("Please select a doctor")
+            return redirect(url_for('auth.book_appointment'))
+
+        doctor = db.users.find_one({"email": doctor_email, "role": "doctor", "status": "approved"})
+        if not doctor:
+            flash("Doctor not found")
+            return redirect(url_for('auth.book_appointment'))
+
+        if db.blocks.find_one({"doctor_email": doctor.get('email'), "patient_email": session['user']['email']}):
+            flash("This doctor is not available for appointments")
+            return redirect(url_for('auth.book_appointment'))
+
+        if not _is_doctor_available_on_date(db, doctor.get('email'), date_value, 60):
+            flash("This doctor is not available on the selected date")
+            return redirect(url_for('auth.book_appointment'))
+
         if not issue_category:
-            flash("Please select a department")
-            return redirect(url_for('auth.book_appointment'))
-
-        general_pool = list(db.users.find({
-            "role": "doctor",
-            "status": "approved",
-            "specialization": {"$regex": "general", "$options": "i"}
-        }))
-        if not general_pool:
-            general_pool = list(db.users.find({"role": "doctor", "status": "approved"}))
-
-        available_pool = []
-        for candidate in general_pool:
-            candidate_email = candidate.get("email")
-            if not candidate_email:
-                continue
-            if db.blocks.find_one({"doctor_email": candidate_email, "patient_email": session['user']['email']}):
-                continue
-            if _is_doctor_available_on_date(db, candidate_email, date_value, 60):
-                available_pool.append(candidate)
-
-        if available_pool:
-            doctor = random.choice(available_pool)
-        else:
-            flash("No doctors available on the selected date")
-            return redirect(url_for('auth.book_appointment'))
+            issue_category = doctor.get('specialization') or "General"
+        general_physician = bool("general" in (doctor.get('specialization') or "").lower())
     else:
         if not doctor_email:
             flash("Please select a doctor for a follow-up")

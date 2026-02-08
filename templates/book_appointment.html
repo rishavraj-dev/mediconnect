@@ -67,106 +67,178 @@
                 </a>
             </div>
 
-            <div class="section-card">
-                <h2><i class="fas fa-calendar-plus"></i> Appointment Details</h2>
-                <form class="appointment-form" method="POST" action="{{ url_for('auth.create_appointment') }}" enctype="multipart/form-data">
-                    <div class="booking-type-toggle">
-                        <label class="radio-pill">
-                            <input type="radio" name="booking_type" value="new" checked>
-                            <span><i class="fas fa-user-plus"></i> New</span>
-                        </label>
-                        <label class="radio-pill">
-                            <input type="radio" name="booking_type" value="followup">
-                            <span><i class="fas fa-rotate-right"></i> Follow-up</span>
-                        </label>
-                    </div>
+            <div class="booking-type-toggle top-toggle">
+                <label class="radio-pill">
+                    <input type="radio" name="booking_mode" value="new" checked>
+                    <span><i class="fas fa-user-plus"></i> New</span>
+                </label>
+                <label class="radio-pill">
+                    <input type="radio" name="booking_mode" value="followup">
+                    <span><i class="fas fa-rotate-right"></i> Follow-up</span>
+                </label>
+            </div>
 
-                    <div class="booking-section" data-booking="new">
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label for="issue_category">Department</label>
-                                <select id="issue_category" name="issue_category" required>
-                                    <option value="" disabled selected>Select a department</option>
-                                    {% if departments %}
-                                        {% for dept in departments %}
-                                            <option value="{{ dept.name }}">{{ dept.name }}</option>
-                                        {% endfor %}
-                                    {% else %}
-                                        <option value="General">General</option>
-                                    {% endif %}
-                                </select>
-                                {% if not departments %}
-                                    <small>No departments configured yet. Using General for now.</small>
+            <div class="booking-section" data-booking="new">
+                <div class="section-card">
+                <div class="section-header">
+                    <h2><i class="fas fa-calendar-plus"></i> New Appointment</h2>
+                    <p>Pick a department, filter doctors by rating, then choose who you want to see.</p>
+                </div>
+                <form class="appointment-form" id="new-appointment-form" method="POST" action="{{ url_for('auth.create_appointment') }}" enctype="multipart/form-data">
+                    <input type="hidden" name="booking_type" value="new">
+                    <input type="hidden" id="new_doctor_email" name="doctor_email" required>
+                    <input type="hidden" id="new_issue_category" name="issue_category">
+
+                    <div class="form-grid filter-grid">
+                        <div class="form-group">
+                            <label for="filter_department">Filter by Department</label>
+                            <select id="filter_department">
+                                <option value="">All departments</option>
+                                {% if departments %}
+                                    {% for dept in departments %}
+                                        <option value="{{ dept.name }}">{{ dept.name }}</option>
+                                    {% endfor %}
                                 {% endif %}
-                            </div>
-                            <div class="form-group">
-                                <label for="new_date">Preferred Date</label>
-                                <input type="date" id="new_date" name="date" required>
-                                <small>The doctor will confirm the time after approval</small>
-                            </div>
-                            <div class="form-group full-width">
-                                <label for="issue_detail">Describe Your Issue (optional)</label>
-                                <textarea id="issue_detail" name="issue_detail" rows="3" placeholder="Share symptoms or concerns"></textarea>
-                            </div>
-                            <div class="form-group full-width">
-                                <label for="symptoms">Symptoms (optional)</label>
-                                <textarea id="symptoms" name="symptoms" rows="2" placeholder="Key symptoms"></textarea>
-                            </div>
-                            <div class="form-group full-width">
-                                <label for="allergies">Allergies (optional)</label>
-                                <input type="text" id="allergies" name="allergies" placeholder="e.g., Penicillin">
-                            </div>
-                            <div class="form-group full-width">
-                                <label for="medications">Current Medications (optional)</label>
-                                <input type="text" id="medications" name="medications" placeholder="e.g., Metformin 500mg">
-                            </div>
-                            <div class="form-group full-width">
-                                <label for="conditions">Existing Conditions (optional)</label>
-                                <input type="text" id="conditions" name="conditions" placeholder="e.g., Diabetes, Hypertension">
-                            </div>
-                            <div class="form-group full-width">
-                                <label for="vitals">Vitals (optional)</label>
-                                <input type="text" id="vitals" name="vitals" placeholder="e.g., BP 120/80, Temp 98.6F">
-                            </div>
-                            <div class="form-group full-width">
-                                <label for="reason">Reason (optional)</label>
-                                <textarea id="reason" name="reason" rows="3" placeholder="Briefly describe your concern"></textarea>
-                            </div>
-                            <div class="form-group full-width">
-                                <label for="reports">Upload Reports (optional)</label>
-                                <input type="file" id="reports" name="reports" multiple accept=".pdf,.png,.jpg,.jpeg,.doc,.docx">
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="rating_filter">Minimum Rating</label>
+                            <select id="rating_filter">
+                                <option value="">Any rating</option>
+                                <option value="5">5 stars</option>
+                                <option value="4">4+ stars</option>
+                                <option value="3">3+ stars</option>
+                                <option value="2">2+ stars</option>
+                                <option value="1">1+ stars</option>
+                            </select>
+                        </div>
+                        <div class="form-group filter-actions">
+                            <label class="sr-only" for="apply_filters">Apply filters</label>
+                            <div class="filter-button-row">
+                                <button class="btn-secondary-action" type="button" id="apply_filters">
+                                    <i class="fas fa-search"></i> Search
+                                </button>
+                                <button class="btn-secondary-action" type="button" id="reset_filters">
+                                    <i class="fas fa-rotate-left"></i> Reset
+                                </button>
                             </div>
                         </div>
                     </div>
 
-                    <div class="booking-section" data-booking="followup" style="display:none;">
-                        <input type="hidden" name="issue_category" value="Follow-up">
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label for="followup_doctor">Select Doctor</label>
-                                <select id="followup_doctor" name="doctor_email" required>
-                                    <option value="" disabled selected>Choose a doctor</option>
-                                    {% for doctor in doctors %}
-                                        <option value="{{ doctor.email }}">Dr. {{ doctor.name }} - {{ doctor.specialization }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="followup_date">Select Date</label>
-                                <input type="date" id="followup_date" name="date" required disabled>
-                                <small id="followup_help">Select a doctor to view available dates.</small>
-                                <div class="date-chip-list" id="followup_date_chips"></div>
-                            </div>
-                            <div class="form-group full-width">
-                                <label for="followup_note">Follow-up Note (optional)</label>
-                                <textarea id="followup_note" name="issue_detail" rows="3" placeholder="Add a short note for the doctor"></textarea>
-                            </div>
+                    <div class="selection-hint">
+                        Selected doctor: <strong id="selected_doctor_label">None</strong>
+                    </div>
+
+                    <div class="filter-hint" id="doctor_filter_hint">Choose a department or rating, then hit search to load doctors.</div>
+                    {% if doctors %}
+                        <div class="appointment-list doctor-list-scroll" id="doctor_list">
+                            {% for doctor in doctors %}
+                                <div class="appointment-card doctor-card" data-doctor-card data-email="{{ doctor.email }}" data-name="Dr. {{ doctor.name }}" data-department="{{ doctor.specialization }}" data-rating="{{ doctor.rating_avg or 0 }}">
+                                    <div class="appointment-info">
+                                        <h4>Dr. {{ doctor.name }}</h4>
+                                        <p><i class="fas fa-stethoscope"></i> {{ doctor.specialization }}</p>
+                                        <p class="rating-line"><i class="fas fa-star"></i> {{ "%.1f"|format(doctor.rating_avg or 0) }} ({{ doctor.rating_count or 0 }} reviews)</p>
+                                    </div>
+                                    <div class="appointment-actions">
+                                        <button class="btn-primary-action btn-compact select-doctor" type="button">
+                                            <i class="fas fa-check"></i> Select
+                                        </button>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <div class="empty-state small" id="doctor_empty_state" style="display:none;">
+                            <i class="fas fa-user-md"></i>
+                            <p>No doctors match the selected filters.</p>
+                        </div>
+                    {% else %}
+                        <div class="empty-state">
+                            <i class="fas fa-user-md"></i>
+                            <h3>No Doctors Available</h3>
+                            <p>Please check back later.</p>
+                        </div>
+                    {% endif %}
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="new_date">Preferred Date</label>
+                            <input type="date" id="new_date" name="date" required>
+                            <small>The doctor will confirm the time after approval</small>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="issue_detail">Describe Your Issue (optional)</label>
+                            <textarea id="issue_detail" name="issue_detail" rows="3" placeholder="Share symptoms or concerns"></textarea>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="symptoms">Symptoms (optional)</label>
+                            <textarea id="symptoms" name="symptoms" rows="2" placeholder="Key symptoms"></textarea>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="allergies">Allergies (optional)</label>
+                            <input type="text" id="allergies" name="allergies" placeholder="e.g., Penicillin">
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="medications">Current Medications (optional)</label>
+                            <input type="text" id="medications" name="medications" placeholder="e.g., Metformin 500mg">
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="conditions">Existing Conditions (optional)</label>
+                            <input type="text" id="conditions" name="conditions" placeholder="e.g., Diabetes, Hypertension">
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="vitals">Vitals (optional)</label>
+                            <input type="text" id="vitals" name="vitals" placeholder="e.g., BP 120/80, Temp 98.6F">
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="reason">Reason (optional)</label>
+                            <textarea id="reason" name="reason" rows="3" placeholder="Briefly describe your concern"></textarea>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="reports">Upload Reports (optional)</label>
+                            <input type="file" id="reports" name="reports" multiple accept=".pdf,.png,.jpg,.jpeg,.doc,.docx">
                         </div>
                     </div>
                     <button class="btn-primary-action" type="submit">
                         <i class="fas fa-paper-plane"></i> Request Appointment
                     </button>
                 </form>
+            </div>
+
+            <div class="booking-section" data-booking="followup" style="display:none;">
+                <div class="section-card">
+                    <div class="section-header">
+                        <h2><i class="fas fa-rotate-right"></i> Follow-up Appointment</h2>
+                        <p>Doctors you have contacted before are ready for a quick follow-up.</p>
+                    </div>
+                    {% if followup_doctors %}
+                        <div class="appointment-list">
+                            {% for doctor in followup_doctors %}
+                                <form class="appointment-card followup-card" method="POST" action="{{ url_for('auth.create_appointment') }}">
+                                    <input type="hidden" name="booking_type" value="followup">
+                                    <input type="hidden" name="doctor_email" value="{{ doctor.email }}">
+                                    <input type="hidden" name="issue_category" value="Follow-up">
+                                    <div class="appointment-info">
+                                        <h4>Dr. {{ doctor.name }}</h4>
+                                        <p><i class="fas fa-stethoscope"></i> {{ doctor.specialization }}</p>
+                                        <p class="rating-line"><i class="fas fa-star"></i> {{ "%.1f"|format(doctor.rating_avg or 0) }} ({{ doctor.rating_count or 0 }} reviews)</p>
+                                    </div>
+                                    <div class="appointment-actions">
+                                        <label class="sr-only" for="followup_date_{{ loop.index }}">Select date</label>
+                                        <input type="date" id="followup_date_{{ loop.index }}" name="date" required>
+                                        <button class="btn-primary-action btn-compact" type="submit">
+                                            <i class="fas fa-calendar-check"></i> Book Now
+                                        </button>
+                                    </div>
+                                </form>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="empty-state small">
+                            <i class="fas fa-calendar-plus"></i>
+                            <p>No follow-up doctors yet. Book a new appointment to get started.</p>
+                        </div>
+                    {% endif %}
+                </div>
             </div>
         </main>
     </div>
@@ -198,76 +270,120 @@
         </a>
     </nav>
     <script>
-        const availabilityMap = {{ doctor_availability | tojson }};
-        const bookingRadios = document.querySelectorAll('input[name="booking_type"]');
-        const sections = document.querySelectorAll('.booking-section');
-        const followupDoctor = document.getElementById('followup_doctor');
-        const followupDate = document.getElementById('followup_date');
-        const followupHelp = document.getElementById('followup_help');
-        const followupChips = document.getElementById('followup_date_chips');
+        const filterDepartment = document.getElementById('filter_department');
+        const ratingFilter = document.getElementById('rating_filter');
+        const applyFilters = document.getElementById('apply_filters');
+        const resetFilters = document.getElementById('reset_filters');
+        const doctorCards = Array.from(document.querySelectorAll('[data-doctor-card]'));
+        const selectedLabel = document.getElementById('selected_doctor_label');
+        const selectedEmailInput = document.getElementById('new_doctor_email');
+        const selectedDeptInput = document.getElementById('new_issue_category');
+        const emptyState = document.getElementById('doctor_empty_state');
+        const filterHint = document.getElementById('doctor_filter_hint');
+        const doctorList = document.getElementById('doctor_list');
+        const bookingModeRadios = document.querySelectorAll('input[name="booking_mode"]');
+        const bookingSections = document.querySelectorAll('.booking-section');
 
-        const updateFollowupDates = () => {
-            const email = followupDoctor.value;
-            const dates = availabilityMap[email] || [];
-            followupChips.innerHTML = '';
-            followupDate.value = '';
+        const filterDoctors = () => {
+            const dept = (filterDepartment?.value || '').toLowerCase().trim();
+            const minRating = parseFloat(ratingFilter?.value || '0');
+            let visibleCount = 0;
+            const hasFilter = Boolean(dept) || minRating > 0;
 
-            if (!email) {
-                followupDate.disabled = true;
-                followupHelp.textContent = 'Select a doctor to view available dates.';
-                return;
-            }
-
-            followupDate.disabled = false;
-
-            if (!dates.length) {
-                followupHelp.textContent = 'No available dates for this doctor.';
-                return;
-            }
-
-            followupHelp.textContent = 'Pick a date from the calendar or tap an available date below.';
-            followupDate.min = dates[0];
-            followupDate.max = dates[dates.length - 1];
-
-            dates.forEach((dateValue) => {
-                const chip = document.createElement('button');
-                chip.type = 'button';
-                chip.className = 'date-chip';
-                chip.textContent = dateValue;
-                chip.addEventListener('click', () => {
-                    followupDate.value = dateValue;
+            if (!hasFilter) {
+                doctorCards.forEach((card) => {
+                    card.style.display = 'none';
                 });
-                followupChips.appendChild(chip);
+                if (filterHint) {
+                    filterHint.style.display = 'block';
+                }
+                if (doctorList) {
+                    doctorList.style.display = 'none';
+                }
+                if (emptyState) {
+                    emptyState.style.display = 'none';
+                }
+                return;
+            }
+
+            doctorCards.forEach((card) => {
+                const cardDept = (card.dataset.department || '').toLowerCase();
+                const cardRating = parseFloat(card.dataset.rating || '0');
+                const matchesDept = !dept || cardDept.includes(dept);
+                const matchesRating = cardRating >= minRating;
+                const show = matchesDept && matchesRating;
+
+                card.style.display = show ? 'flex' : 'none';
+                if (show) {
+                    visibleCount += 1;
+                }
             });
+
+            if (filterHint) {
+                filterHint.style.display = 'none';
+            }
+            if (doctorList) {
+                doctorList.style.display = 'flex';
+            }
+            if (emptyState) {
+                emptyState.style.display = visibleCount ? 'none' : 'block';
+            }
+
+            const selectedCard = doctorCards.find((card) => card.classList.contains('selected'));
+            if (selectedCard && selectedCard.style.display === 'none') {
+                selectedCard.classList.remove('selected');
+                selectedLabel.textContent = 'None';
+                selectedEmailInput.value = '';
+            }
         };
 
-        const toggleSections = () => {
-            const selected = document.querySelector('input[name="booking_type"]:checked').value;
-            sections.forEach((section) => {
+        const selectDoctor = (card) => {
+            doctorCards.forEach((item) => item.classList.remove('selected'));
+            card.classList.add('selected');
+            selectedLabel.textContent = card.dataset.name || 'Selected';
+            selectedEmailInput.value = card.dataset.email || '';
+            if (selectedDeptInput) {
+                selectedDeptInput.value = card.dataset.department || '';
+            }
+        };
+
+        const toggleBookingSections = () => {
+            const selected = document.querySelector('input[name="booking_mode"]:checked')?.value || 'new';
+            bookingSections.forEach((section) => {
                 const active = section.dataset.booking === selected;
                 section.style.display = active ? 'block' : 'none';
-                section.querySelectorAll('input, select, textarea').forEach((field) => {
-                    if (field.name === 'booking_type') {
-                        return;
-                    }
-                    field.disabled = !active;
-                });
             });
-
-            if (selected === 'followup') {
-                updateFollowupDates();
-            }
         };
 
-        bookingRadios.forEach((radio) => {
-            radio.addEventListener('change', toggleSections);
+        doctorCards.forEach((card) => {
+            const button = card.querySelector('.select-doctor');
+            if (button) {
+                button.addEventListener('click', () => selectDoctor(card));
+            }
         });
 
-        if (followupDoctor) {
-            followupDoctor.addEventListener('change', updateFollowupDates);
+        if (applyFilters) {
+            applyFilters.addEventListener('click', filterDoctors);
         }
 
-        toggleSections();
+        if (resetFilters) {
+            resetFilters.addEventListener('click', () => {
+                if (filterDepartment) {
+                    filterDepartment.value = '';
+                }
+                if (ratingFilter) {
+                    ratingFilter.value = '';
+                }
+                filterDoctors();
+            });
+        }
+
+        bookingModeRadios.forEach((radio) => {
+            radio.addEventListener('change', toggleBookingSections);
+        });
+
+        filterDoctors();
+        toggleBookingSections();
     </script>
 </body>
 </html>
