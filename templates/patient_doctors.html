@@ -62,7 +62,7 @@
                     <h1>Find Doctors</h1>
                     <p>Choose a specialist or start with a general physician.</p>
                 </div>
-                <a class="btn-primary-action" href="{{ url_for('auth.patient_dashboard') }}#schedule-appointment">
+                <a class="btn-primary-action" href="{{ url_for('auth.book_appointment') }}">
                     <i class="fas fa-calendar-plus"></i> Book Appointment
                 </a>
             </div>
@@ -78,7 +78,7 @@
                                     <p><i class="fas fa-envelope"></i> {{ doctor.email }}</p>
                                 </div>
                                 <div class="appointment-actions">
-                                    <a class="btn-primary-action btn-compact" href="{{ url_for('auth.patient_dashboard') }}#schedule-appointment">
+                                    <a class="btn-primary-action btn-compact" href="{{ url_for('auth.book_appointment') }}">
                                         <i class="fas fa-calendar-plus"></i> Book Appointment
                                     </a>
                                 </div>
@@ -105,7 +105,7 @@
             <i class="fas fa-calendar-check"></i>
             <span>Appointments</span>
         </a>
-        <a href="{{ url_for('auth.patient_dashboard') }}#schedule-appointment" class="mobile-nav-item">
+        <a href="{{ url_for('auth.book_appointment') }}" class="mobile-nav-item">
             <i class="fas fa-plus-circle"></i>
             <span>Book</span>
         </a>

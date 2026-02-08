@@ -62,7 +62,7 @@
                     <h1>My Appointments</h1>
                     <p>Track upcoming visits, reports, and consultation notes.</p>
                 </div>
-                <a class="btn-primary-action" href="{{ url_for('auth.patient_dashboard') }}#schedule-appointment">
+                <a class="btn-primary-action" href="{{ url_for('auth.book_appointment') }}">
                     <i class="fas fa-calendar-plus"></i> Book Appointment
                 </a>
             </div>
@@ -166,7 +166,7 @@
                         <i class="fas fa-calendar-times"></i>
                         <h3>No Appointments Yet</h3>
                         <p>Book your first consultation to get started.</p>
-                        <a class="btn-secondary-action" href="{{ url_for('auth.patient_dashboard') }}#schedule-appointment">
+                        <a class="btn-secondary-action" href="{{ url_for('auth.book_appointment') }}">
                             <i class="fas fa-plus"></i> Book Appointment
                         </a>
                     </div>
@@ -208,7 +208,7 @@
             <i class="fas fa-calendar-check"></i>
             <span>Appointments</span>
         </a>
-        <a href="{{ url_for('auth.patient_dashboard') }}#schedule-appointment" class="mobile-nav-item">
+        <a href="{{ url_for('auth.book_appointment') }}" class="mobile-nav-item">
             <i class="fas fa-plus-circle"></i>
             <span>Book</span>
         </a>

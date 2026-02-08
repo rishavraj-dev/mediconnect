@@ -67,7 +67,7 @@
                     <h1>Welcome, {{ user.name }}! 👋</h1>
                     <p>Your care hub with appointments, reports, and visit notes.</p>
                 </div>
-                <a class="btn-primary-action" href="#schedule-appointment">
+                <a class="btn-primary-action" href="{{ url_for('auth.book_appointment') }}">
                     <i class="fas fa-plus"></i> Book Appointment
                 </a>
             </div>
@@ -112,92 +112,13 @@
                 </div>
             </div>
 
-            <div class="content-grid">
-            <!-- Schedule Appointment -->
-            <div class="section-card" id="schedule-appointment">
-                <h2><i class="fas fa-calendar-plus"></i> Schedule Appointment</h2>
-                <form class="appointment-form" method="POST" action="{{ url_for('auth.create_appointment') }}" enctype="multipart/form-data">
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="issue_category">Issue Category</label>
-                            <select id="issue_category" name="issue_category" required>
-                                <option value="" disabled selected>Select an issue</option>
-                                <option value="General Checkup">General Checkup</option>
-                                <option value="Cold & Flu">Cold & Flu</option>
-                                <option value="Skin / Dermatology">Skin / Dermatology</option>
-                                <option value="Cardiology">Cardiology</option>
-                                <option value="Orthopedic">Orthopedic</option>
-                                <option value="Dental">Dental</option>
-                                <option value="Mental Health">Mental Health</option>
-                                <option value="Pediatrics">Pediatrics</option>
-                                <option value="Women's Health">Women's Health</option>
-                                <option value="Other">Other</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="doctor_email">Select Doctor (optional)</label>
-                            <select id="doctor_email" name="doctor_email">
-                                <option value="" disabled selected>Choose a doctor</option>
-                                {% for doctor in doctors %}
-                                    <option value="{{ doctor.email }}">Dr. {{ doctor.name }} - {{ doctor.specialization }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="date">Date</label>
-                            <input type="date" id="date" name="date" required>
-                            <small>The doctor will confirm the time after approval</small>
-                        </div>
-                        <div class="form-group full-width">
-                            <label class="checkbox-row">
-                                <input type="checkbox" name="general_physician">
-                                Not sure? Choose a General Physician and we will assign one for you.
-                            </label>
-                        </div>
-                        <div class="form-group full-width">
-                            <label for="issue_detail">Describe Your Issue (optional)</label>
-                            <textarea id="issue_detail" name="issue_detail" rows="3" placeholder="Share symptoms or concerns"></textarea>
-                        </div>
-                        <div class="form-group full-width">
-                            <label for="symptoms">Symptoms (optional)</label>
-                            <textarea id="symptoms" name="symptoms" rows="2" placeholder="Key symptoms"></textarea>
-                        </div>
-                        <div class="form-group full-width">
-                            <label for="allergies">Allergies (optional)</label>
-                            <input type="text" id="allergies" name="allergies" placeholder="e.g., Penicillin">
-                        </div>
-                        <div class="form-group full-width">
-                            <label for="medications">Current Medications (optional)</label>
-                            <input type="text" id="medications" name="medications" placeholder="e.g., Metformin 500mg">
-                        </div>
-                        <div class="form-group full-width">
-                            <label for="conditions">Existing Conditions (optional)</label>
-                            <input type="text" id="conditions" name="conditions" placeholder="e.g., Diabetes, Hypertension">
-                        </div>
-                        <div class="form-group full-width">
-                            <label for="vitals">Vitals (optional)</label>
-                            <input type="text" id="vitals" name="vitals" placeholder="e.g., BP 120/80, Temp 98.6F">
-                        </div>
-                        <div class="form-group full-width">
-                            <label for="reason">Reason (optional)</label>
-                            <textarea id="reason" name="reason" rows="3" placeholder="Briefly describe your concern"></textarea>
-                        </div>
-                        <div class="form-group full-width">
-                            <label for="reports">Upload Reports (optional)</label>
-                            <input type="file" id="reports" name="reports" multiple accept=".pdf,.png,.jpg,.jpeg,.doc,.docx">
-                        </div>
-                    </div>
-                    <button class="btn-primary-action" type="submit">
-                        <i class="fas fa-paper-plane"></i> Request Appointment
-                    </button>
-                </form>
-            </div>
+            
 
             <!-- Quick Actions -->
             <div class="section-card">
                 <h2><i class="fas fa-bolt"></i> Quick Actions</h2>
                 <div class="quick-actions-grid">
-                    <a class="action-card" href="{{ url_for('auth.patient_dashboard') }}#schedule-appointment">
+                    <a class="action-card" href="{{ url_for('auth.book_appointment') }}">
                         <i class="fas fa-calendar-plus"></i>
                         <h3>Book Appointment</h3>
                         <p>Choose a day and we will confirm the time</p>
@@ -297,16 +218,12 @@
                         <i class="fas fa-calendar-times"></i>
                         <h3>No Upcoming Appointments</h3>
                         <p>You don't have any appointments scheduled. Book a consultation with our expert doctors.</p>
-                        <a class="btn-secondary-action" href="#schedule-appointment">
-                            <i class="fas fa-search"></i> Find a Doctor
+                        <a class="btn-secondary-action" href="{{ url_for('auth.book_appointment') }}">
+                            <i class="fas fa-calendar-plus"></i> Book Appointment
                         </a>
                     </div>
                 {% endif %}
             </div>
-
-            </div>
-
-
 
             <!-- Health Tips -->
             <div class="section-card">
@@ -341,7 +258,7 @@
             <i class="fas fa-calendar-check"></i>
             <span>Appointments</span>
         </a>
-        <a href="{{ url_for('auth.patient_dashboard') }}#schedule-appointment" class="mobile-nav-item">
+        <a href="{{ url_for('auth.book_appointment') }}" class="mobile-nav-item">
             <i class="fas fa-plus-circle"></i>
             <span>Book</span>
         </a>

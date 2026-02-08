@@ -634,6 +634,16 @@ def patient_prescriptions():
 
     return render_template('patient_prescriptions.html', user=session['user'], prescriptions=prescriptions)
 
+@auth_bp.route('/patient/book-appointment')
+def book_appointment():
+    if 'user' not in session or session['user']['role'] != 'patient':
+        flash("Please login to book an appointment")
+        return redirect(url_for('auth.login_patient'))
+
+    from app import db
+    doctors = list(db.users.find({"role": "doctor", "status": "approved"}, {"password": 0}).sort("name", 1))
+    return render_template('book_appointment.html', user=session['user'], doctors=doctors)
+
 @auth_bp.route('/patient/profile', methods=['GET', 'POST'])
 def patient_profile():
     if 'user' not in session or session['user']['role'] != 'patient':
@@ -1060,7 +1070,7 @@ def create_appointment():
 
     if not date_value or not issue_category:
         flash("Please select an issue and date")
-        return redirect(url_for('auth.patient_dashboard'))
+        return redirect(url_for('auth.book_appointment'))
 
     doctor = None
     if general_physician:
@@ -1077,15 +1087,15 @@ def create_appointment():
         doctor = db.users.find_one({"email": doctor_email, "role": "doctor", "status": "approved"})
     else:
         flash("Please select a doctor or choose General Physician")
-        return redirect(url_for('auth.patient_dashboard'))
+        return redirect(url_for('auth.book_appointment'))
 
     if not doctor:
         flash("No doctor available right now")
-        return redirect(url_for('auth.patient_dashboard'))
+        return redirect(url_for('auth.book_appointment'))
 
     if db.blocks.find_one({"doctor_email": doctor.get('email'), "patient_email": session['user']['email']}):
         flash("This doctor is not available for appointments")
-        return redirect(url_for('auth.patient_dashboard'))
+        return redirect(url_for('auth.book_appointment'))
 
     rules = _get_availability_rules(db, doctor.get('email'))
     if rules:
@@ -1099,7 +1109,7 @@ def create_appointment():
 
         if appointment_date and not allow_weekends and appointment_date.weekday() in [5, 6]:
             flash("This doctor is not available on weekends")
-            return redirect(url_for('auth.patient_dashboard'))
+            return redirect(url_for('auth.book_appointment'))
 
         if max_daily:
             daily_count = db.appointments.count_documents({
@@ -1109,7 +1119,7 @@ def create_appointment():
             })
             if daily_count >= max_daily:
                 flash("This doctor has reached the daily limit")
-                return redirect(url_for('auth.patient_dashboard'))
+                return redirect(url_for('auth.book_appointment'))
 
     appointment = {
         "patient_email": session['user']['email'],
