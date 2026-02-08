@@ -152,11 +152,10 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label for="followup_date">Available Dates</label>
-                                <select id="followup_date" name="date" required>
-                                    <option value="" disabled selected>Select a doctor first</option>
-                                </select>
-                                <small>Showing availability for the next 60 days (max 50 patients/day).</small>
+                                <label for="followup_date">Select Date</label>
+                                <input type="date" id="followup_date" name="date" required disabled>
+                                <small id="followup_help">Select a doctor to view available dates.</small>
+                                <div class="date-chip-list" id="followup_date_chips"></div>
                             </div>
                             <div class="form-group full-width">
                                 <label for="followup_note">Follow-up Note (optional)</label>
@@ -204,41 +203,41 @@
         const sections = document.querySelectorAll('.booking-section');
         const followupDoctor = document.getElementById('followup_doctor');
         const followupDate = document.getElementById('followup_date');
+        const followupHelp = document.getElementById('followup_help');
+        const followupChips = document.getElementById('followup_date_chips');
 
         const updateFollowupDates = () => {
             const email = followupDoctor.value;
             const dates = availabilityMap[email] || [];
-            followupDate.innerHTML = '';
+            followupChips.innerHTML = '';
+            followupDate.value = '';
 
             if (!email) {
-                const option = document.createElement('option');
-                option.textContent = 'Select a doctor first';
-                option.disabled = true;
-                option.selected = true;
-                followupDate.appendChild(option);
+                followupDate.disabled = true;
+                followupHelp.textContent = 'Select a doctor to view available dates.';
                 return;
             }
+
+            followupDate.disabled = false;
 
             if (!dates.length) {
-                const option = document.createElement('option');
-                option.textContent = 'No available dates';
-                option.disabled = true;
-                option.selected = true;
-                followupDate.appendChild(option);
+                followupHelp.textContent = 'No available dates for this doctor.';
                 return;
             }
 
-            const placeholder = document.createElement('option');
-            placeholder.textContent = 'Select a date';
-            placeholder.disabled = true;
-            placeholder.selected = true;
-            followupDate.appendChild(placeholder);
+            followupHelp.textContent = 'Pick a date from the calendar or tap an available date below.';
+            followupDate.min = dates[0];
+            followupDate.max = dates[dates.length - 1];
 
             dates.forEach((dateValue) => {
-                const option = document.createElement('option');
-                option.value = dateValue;
-                option.textContent = dateValue;
-                followupDate.appendChild(option);
+                const chip = document.createElement('button');
+                chip.type = 'button';
+                chip.className = 'date-chip';
+                chip.textContent = dateValue;
+                chip.addEventListener('click', () => {
+                    followupDate.value = dateValue;
+                });
+                followupChips.appendChild(chip);
             });
         };
 

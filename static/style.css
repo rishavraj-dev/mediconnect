@@ -2038,6 +2038,30 @@ footer {
     display: block;
 }
 
+.date-chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.date-chip {
+    border: 1px solid var(--border);
+    background: var(--white);
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--primary-dark);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.date-chip:hover {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+
 .form-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
