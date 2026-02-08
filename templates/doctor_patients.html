@@ -70,13 +70,34 @@
                         {% for patient in patients %}
                             <div class="appointment-card">
                                 <div class="appointment-info">
-                                    <h4>{{ patient.name }}</h4>
+                                    <h4>{{ patient.name }}
+                                        {% if patient.is_blocked %}
+                                            <span class="status-badge status-blocked">blocked</span>
+                                        {% endif %}
+                                    </h4>
                                     <p><i class="fas fa-envelope"></i> {{ patient.email }}</p>
+                                    {% if patient.phone %}
+                                        <p><i class="fas fa-phone"></i> {{ patient.phone }}</p>
+                                    {% endif %}
                                 </div>
                                 <div class="appointment-actions">
                                     <a class="btn-primary-action btn-compact" href="{{ url_for('auth.doctor_patient_detail', patient_email=patient.email) }}">
                                         <i class="fas fa-notes-medical"></i> View History
                                     </a>
+                                    {% if patient.is_blocked %}
+                                        <form method="POST" action="{{ url_for('auth.doctor_unblock_patient', patient_email=patient.email) }}">
+                                            <button class="btn-success" type="submit">
+                                                <i class="fas fa-unlock"></i> Unblock
+                                            </button>
+                                        </form>
+                                    {% else %}
+                                        <form method="POST" action="{{ url_for('auth.doctor_block_patient', patient_email=patient.email) }}">
+                                            <input type="hidden" name="reason" value="Blocked from patient list">
+                                            <button class="btn-danger" type="submit">
+                                                <i class="fas fa-ban"></i> Block
+                                            </button>
+                                        </form>
+                                    {% endif %}
                                 </div>
                             </div>
                         {% endfor %}

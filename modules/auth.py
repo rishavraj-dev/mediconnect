@@ -10,9 +10,37 @@ import os
 auth_bp = Blueprint('auth', __name__)
 
 ALLOWED_REPORT_EXTENSIONS = {"pdf", "png", "jpg", "jpeg", "doc", "docx"}
+DEFAULT_NOTIFY_EMAIL = True
+DEFAULT_NOTIFY_SMS = False
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
 
 def is_allowed_report(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_REPORT_EXTENSIONS
+
+def _get_user_settings(db, email, role):
+    doc = db.users.find_one({"email": email, "role": role}, {"settings": 1})
+    return (doc or {}).get("settings", {})
+
+def _should_send_email(db, email, role):
+    settings = _get_user_settings(db, email, role)
+    if not settings:
+        return DEFAULT_NOTIFY_EMAIL
+    return settings.get("notify_email", DEFAULT_NOTIFY_EMAIL)
+
+def _send_email(to_address, subject, body):
+    if not to_address:
+        return False
+
+    from app import mail
+    try:
+        msg = Message(subject,
+                      sender="MediConnect <aiuser.first@gmail.com>",
+                      recipients=[to_address])
+        msg.body = body
+        mail.send(msg)
+        return True
+    except Exception:
+        return False
 
 # --- PATIENT ROUTE ---
 @auth_bp.route('/register/patient', methods=['GET', 'POST'])
@@ -21,6 +49,10 @@ def register_patient():
         from app import db
         
         name = request.form.get('name')
+        phone = request.form.get('phone')
+        dob = request.form.get('dob')
+        gender = request.form.get('gender')
+        address = request.form.get('address')
         email = request.form.get('email').lower()
         password = request.form.get('password')
 
@@ -35,8 +67,16 @@ def register_patient():
         session['temp_user'] = {
             'role': 'patient',
             'name': name,
+            'phone': phone,
+            'dob': dob,
+            'gender': gender,
+            'address': address,
             'email': email,
             'password': generate_password_hash(password),
+            'settings': {
+                'notify_email': DEFAULT_NOTIFY_EMAIL,
+                'notify_sms': DEFAULT_NOTIFY_SMS
+            },
             'otp': otp
         }
 
@@ -61,6 +101,9 @@ def register_doctor():
         name = request.form.get('name')
         license_id = request.form.get('license_id') # Extra Field
         specialization = request.form.get('specialization') # Extra Field
+        phone = request.form.get('phone')
+        clinic_address = request.form.get('clinic_address')
+        years_experience = request.form.get('years_experience')
         email = request.form.get('email').lower()
         password = request.form.get('password')
 
@@ -75,8 +118,15 @@ def register_doctor():
             'name': name,
             'license_id': license_id,
             'specialization': specialization,
+            'phone': phone,
+            'clinic_address': clinic_address,
+            'years_experience': years_experience,
             'email': email,
             'password': generate_password_hash(password),
+            'settings': {
+                'notify_email': DEFAULT_NOTIFY_EMAIL,
+                'notify_sms': DEFAULT_NOTIFY_SMS
+            },
             'otp': otp
         }
 
@@ -159,7 +209,11 @@ def login_patient():
             session['user'] = {
                 'email': user['email'],
                 'name': user['name'],
-                'role': user['role']
+                'role': user['role'],
+                'phone': user.get('phone'),
+                'dob': user.get('dob'),
+                'gender': user.get('gender'),
+                'address': user.get('address')
             }
             return redirect(url_for('auth.patient_dashboard'))
         else:
@@ -184,7 +238,10 @@ def login_doctor():
                 'name': user['name'],
                 'role': user['role'],
                 'license_id': user.get('license_id'),
-                'specialization': user.get('specialization')
+                'specialization': user.get('specialization'),
+                'phone': user.get('phone'),
+                'clinic_address': user.get('clinic_address'),
+                'years_experience': user.get('years_experience')
             }
             return redirect(url_for('auth.doctor_dashboard'))
         else:
@@ -323,12 +380,32 @@ def patient_profile():
     from app import db
     if request.method == 'POST':
         name = request.form.get('name')
+        phone = request.form.get('phone')
+        dob = request.form.get('dob')
+        gender = request.form.get('gender')
+        address = request.form.get('address')
+        update_data = {}
         if name:
+            update_data["name"] = name
+            session['user']['name'] = name
+        if phone:
+            update_data["phone"] = phone
+            session['user']['phone'] = phone
+        if dob:
+            update_data["dob"] = dob
+            session['user']['dob'] = dob
+        if gender:
+            update_data["gender"] = gender
+            session['user']['gender'] = gender
+        if address:
+            update_data["address"] = address
+            session['user']['address'] = address
+        if update_data:
+            update_data["updated_at"] = datetime.utcnow()
             db.users.update_one(
                 {"email": session['user']['email'], "role": "patient"},
-                {"$set": {"name": name, "updated_at": datetime.utcnow()}}
+                {"$set": update_data}
             )
-            session['user']['name'] = name
             flash("Profile updated")
         return redirect(url_for('auth.patient_profile'))
 
@@ -468,6 +545,21 @@ def doctor_patients():
                 "name": patient_name or "Patient"
             }
     patients = list(patients_map.values())
+    patient_emails = [patient["email"] for patient in patients]
+    if patient_emails:
+        profiles = db.users.find({"email": {"$in": patient_emails}, "role": "patient"}, {"email": 1, "phone": 1})
+        profile_map = {profile.get("email"): profile for profile in profiles}
+        for patient in patients:
+            profile = profile_map.get(patient["email"], {})
+            patient["phone"] = profile.get("phone")
+
+    blocked_patients = set()
+    blocks = db.blocks.find({"doctor_email": session['user']['email']}, {"patient_email": 1})
+    for block in blocks:
+        if block.get("patient_email"):
+            blocked_patients.add(block.get("patient_email"))
+    for patient in patients:
+        patient["is_blocked"] = patient.get("email") in blocked_patients
     return render_template('doctor_patients.html', user=session['user'], patients=patients)
 
 @auth_bp.route('/doctor/patients/<patient_email>')
@@ -477,8 +569,9 @@ def doctor_patient_detail(patient_email):
         return redirect(url_for('auth.login_doctor'))
 
     from app import db
+    doctor_email = session['user']['email']
     appointments = list(db.appointments.find({
-        "doctor_email": session['user']['email'],
+        "doctor_email": doctor_email,
         "patient_email": patient_email
     }).sort("created_at", -1))
 
@@ -486,17 +579,23 @@ def doctor_patient_detail(patient_email):
         appt["id"] = str(appt["_id"])
 
     prescriptions = list(db.prescriptions.find({
-        "doctor_email": session['user']['email'],
+        "doctor_email": doctor_email,
         "patient_email": patient_email
     }).sort("created_at", -1))
 
     for item in prescriptions:
         item["id"] = str(item["_id"])
 
+    patient_profile = db.users.find_one({"email": patient_email, "role": "patient"}, {"password": 0}) or {}
     patient = {
         "email": patient_email,
-        "name": appointments[0].get("patient_name") if appointments else "Patient"
+        "name": patient_profile.get("name") or (appointments[0].get("patient_name") if appointments else "Patient"),
+        "phone": patient_profile.get("phone"),
+        "dob": patient_profile.get("dob"),
+        "gender": patient_profile.get("gender"),
+        "address": patient_profile.get("address")
     }
+    patient["is_blocked"] = db.blocks.find_one({"doctor_email": doctor_email, "patient_email": patient_email}) is not None
 
     return render_template(
         'doctor_patient_detail.html',
@@ -544,6 +643,9 @@ def doctor_profile():
         name = request.form.get('name')
         specialization = request.form.get('specialization')
         license_id = request.form.get('license_id')
+        phone = request.form.get('phone')
+        clinic_address = request.form.get('clinic_address')
+        years_experience = request.form.get('years_experience')
         update_data = {}
         if name:
             update_data["name"] = name
@@ -554,6 +656,15 @@ def doctor_profile():
         if license_id:
             update_data["license_id"] = license_id
             session['user']['license_id'] = license_id
+        if phone:
+            update_data["phone"] = phone
+            session['user']['phone'] = phone
+        if clinic_address:
+            update_data["clinic_address"] = clinic_address
+            session['user']['clinic_address'] = clinic_address
+        if years_experience:
+            update_data["years_experience"] = years_experience
+            session['user']['years_experience'] = years_experience
         if update_data:
             update_data["updated_at"] = datetime.utcnow()
             db.users.update_one(
@@ -637,6 +748,10 @@ def create_appointment():
         flash("No doctor available right now")
         return redirect(url_for('auth.patient_dashboard'))
 
+    if db.blocks.find_one({"doctor_email": doctor.get('email'), "patient_email": session['user']['email']}):
+        flash("This doctor is not available for appointments")
+        return redirect(url_for('auth.patient_dashboard'))
+
     appointment = {
         "patient_email": session['user']['email'],
         "patient_name": session['user']['name'],
@@ -657,6 +772,16 @@ def create_appointment():
 
     result = db.appointments.insert_one(appointment)
     appointment_id = str(result.inserted_id)
+
+    if _should_send_email(db, doctor.get('email'), "doctor"):
+        body = (
+            f"Hello Dr. {doctor.get('name')},\n\n"
+            f"You have a new appointment request from {session['user']['name']}.\n"
+            f"Date: {date_value}\nTime: {time_value}\n"
+            f"Issue: {issue_category}\n\n"
+            "Please log in to MediConnect to review the request."
+        )
+        _send_email(doctor.get('email'), "New Appointment Request", body)
 
     reports = []
     report_files = request.files.getlist('reports')
@@ -725,6 +850,16 @@ def update_appointment_status(appointment_id, action):
         {"$set": {"status": status, "updated_at": datetime.utcnow()}}
     )
 
+    appointment = db.appointments.find_one({"_id": appointment_object_id})
+    if appointment and _should_send_email(db, appointment.get("patient_email"), "patient"):
+        body = (
+            f"Hello {appointment.get('patient_name')},\n\n"
+            f"Your appointment with Dr. {appointment.get('doctor_name')} has been {status}.\n"
+            f"Date: {appointment.get('date')}\nTime: {appointment.get('time')}\n\n"
+            "Thank you for using MediConnect."
+        )
+        _send_email(appointment.get("patient_email"), "Appointment Update", body)
+
     flash("Appointment updated")
     return redirect(url_for('auth.doctor_dashboard'))
 
@@ -748,6 +883,15 @@ def complete_appointment(appointment_id):
         {"_id": appointment_object_id, "doctor_email": doctor_email},
         {"$set": {"status": "completed", "updated_at": datetime.utcnow()}}
     )
+
+    appointment = db.appointments.find_one({"_id": appointment_object_id})
+    if appointment and _should_send_email(db, appointment.get("patient_email"), "patient"):
+        body = (
+            f"Hello {appointment.get('patient_name')},\n\n"
+            f"Your appointment with Dr. {appointment.get('doctor_name')} is marked completed.\n"
+            "You can review your consultation notes and prescriptions in your dashboard."
+        )
+        _send_email(appointment.get("patient_email"), "Appointment Completed", body)
 
     flash("Appointment marked as completed")
     return redirect(url_for('auth.doctor_dashboard'))
@@ -862,6 +1006,15 @@ def cancel_appointment(appointment_id):
         {"$set": {"status": "cancelled", "updated_at": datetime.utcnow()}}
     )
 
+    appointment = db.appointments.find_one({"_id": appointment_object_id})
+    if appointment and _should_send_email(db, appointment.get("doctor_email"), "doctor"):
+        body = (
+            f"Hello Dr. {appointment.get('doctor_name')},\n\n"
+            f"The appointment with {appointment.get('patient_name')} has been cancelled by the patient.\n"
+            f"Date: {appointment.get('date')}\nTime: {appointment.get('time')}\n"
+        )
+        _send_email(appointment.get("doctor_email"), "Appointment Cancelled", body)
+
     flash("Appointment cancelled")
     return redirect(url_for('auth.patient_dashboard'))
 
@@ -890,6 +1043,77 @@ def update_consultation_notes(appointment_id):
 
     flash("Consultation notes updated")
     return redirect(url_for('auth.doctor_dashboard'))
+
+# --- BLOCK/REPORT PATIENT (DOCTOR) ---
+@auth_bp.route('/doctor/patients/<patient_email>/block', methods=['POST'])
+def doctor_block_patient(patient_email):
+    if 'user' not in session or session['user']['role'] != 'doctor':
+        flash("Please login to manage patients")
+        return redirect(url_for('auth.login_doctor'))
+
+    from app import db
+    reason = request.form.get('reason', '').strip()
+    db.blocks.update_one(
+        {"doctor_email": session['user']['email'], "patient_email": patient_email},
+        {"$set": {
+            "doctor_email": session['user']['email'],
+            "patient_email": patient_email,
+            "reason": reason,
+            "created_at": datetime.utcnow()
+        }},
+        upsert=True
+    )
+
+    flash("Patient blocked")
+    return redirect(request.referrer or url_for('auth.doctor_patients'))
+
+@auth_bp.route('/doctor/patients/<patient_email>/unblock', methods=['POST'])
+def doctor_unblock_patient(patient_email):
+    if 'user' not in session or session['user']['role'] != 'doctor':
+        flash("Please login to manage patients")
+        return redirect(url_for('auth.login_doctor'))
+
+    from app import db
+    db.blocks.delete_one({"doctor_email": session['user']['email'], "patient_email": patient_email})
+    flash("Patient unblocked")
+    return redirect(request.referrer or url_for('auth.doctor_patients'))
+
+@auth_bp.route('/doctor/patients/<patient_email>/report', methods=['POST'])
+def doctor_report_patient(patient_email):
+    if 'user' not in session or session['user']['role'] != 'doctor':
+        flash("Please login to manage patients")
+        return redirect(url_for('auth.login_doctor'))
+
+    from app import db
+    reason = request.form.get('reason', '').strip()
+    details = request.form.get('details', '').strip()
+
+    if not reason:
+        flash("Please provide a reason for the report")
+        return redirect(request.referrer or url_for('auth.doctor_patients'))
+
+    report_doc = {
+        "doctor_email": session['user']['email'],
+        "doctor_name": session['user'].get('name'),
+        "patient_email": patient_email,
+        "reason": reason,
+        "details": details,
+        "created_at": datetime.utcnow()
+    }
+    db.reports.insert_one(report_doc)
+
+    if ADMIN_EMAIL:
+        body = (
+            f"Patient report submitted\n\n"
+            f"Doctor: {report_doc.get('doctor_name')} ({report_doc.get('doctor_email')})\n"
+            f"Patient: {patient_email}\n"
+            f"Reason: {reason}\n\n"
+            f"Details:\n{details or 'N/A'}\n"
+        )
+        _send_email(ADMIN_EMAIL, "MediConnect Patient Report", body)
+
+    flash("Report submitted")
+    return redirect(request.referrer or url_for('auth.doctor_patients'))
 
 # --- LOGOUT ---
 @auth_bp.route('/logout')

@@ -1935,6 +1935,26 @@ footer {
     color: var(--danger);
 }
 
+.status-blocked {
+    background: #F3F4F6;
+    color: var(--gray);
+}
+
+.hero-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 8px;
+    color: var(--gray);
+    font-size: 0.9rem;
+}
+
+.hero-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
 .btn-success,
 .btn-danger {
     padding: 10px 16px;

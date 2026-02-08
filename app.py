@@ -13,7 +13,7 @@ app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static', 'uploads')
 
 # Brevo SMTP Configuration
 app.config['MAIL_SERVER'] = 'smtp-relay.brevo.com'
-app.config['MAIL_PORT'] = 587
+app.config['MAIL_PORT'] = 2525
 app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USERNAME'] = os.getenv("BREVO_LOGIN")
 app.config['MAIL_PASSWORD'] = os.getenv("BREVO_SMTP_KEY")

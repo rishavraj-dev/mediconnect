@@ -61,10 +61,55 @@
                 <div>
                     <h1>{{ patient.name }}</h1>
                     <p>{{ patient.email }}</p>
+                    {% if patient.phone %}
+                        <p><i class="fas fa-phone"></i> {{ patient.phone }}</p>
+                    {% endif %}
+                    <div class="hero-meta">
+                        {% if patient.dob %}<span><i class="fas fa-calendar-alt"></i> {{ patient.dob }}</span>{% endif %}
+                        {% if patient.gender %}<span><i class="fas fa-venus-mars"></i> {{ patient.gender }}</span>{% endif %}
+                        {% if patient.address %}<span><i class="fas fa-map-marker-alt"></i> {{ patient.address }}</span>{% endif %}
+                    </div>
                 </div>
                 <a class="btn-primary-action" href="{{ url_for('auth.doctor_patients') }}">
                     <i class="fas fa-arrow-left"></i> Back to Patients
                 </a>
+            </div>
+
+            <div class="section-card">
+                <div class="section-header">
+                    <h2><i class="fas fa-shield-alt"></i> Safety Actions</h2>
+                </div>
+                <div class="appointment-list">
+                    <div class="appointment-card">
+                        <div class="appointment-info">
+                            <h4>Block or Report Patient</h4>
+                            <p>Use these actions if a patient is abusive or violating policies.</p>
+                            <form class="notes-form" method="POST" action="{{ url_for('auth.doctor_report_patient', patient_email=patient.email) }}">
+                                <input type="text" name="reason" placeholder="Report reason" required>
+                                <textarea name="details" rows="3" placeholder="Additional details (optional)"></textarea>
+                                <button class="btn-danger" type="submit">
+                                    <i class="fas fa-flag"></i> Submit Report
+                                </button>
+                            </form>
+                        </div>
+                        <div class="appointment-actions">
+                            {% if patient.is_blocked %}
+                                <form method="POST" action="{{ url_for('auth.doctor_unblock_patient', patient_email=patient.email) }}">
+                                    <button class="btn-success" type="submit">
+                                        <i class="fas fa-unlock"></i> Unblock
+                                    </button>
+                                </form>
+                            {% else %}
+                                <form method="POST" action="{{ url_for('auth.doctor_block_patient', patient_email=patient.email) }}">
+                                    <input type="hidden" name="reason" value="Blocked from patient detail">
+                                    <button class="btn-danger" type="submit">
+                                        <i class="fas fa-ban"></i> Block Patient
+                                    </button>
+                                </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="section-card">
