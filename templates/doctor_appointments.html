@@ -174,9 +174,9 @@
                                 </div>
                                 <div class="appointment-actions">
                                     {% if appt.call_active %}
-                                        <button class="btn-primary-action btn-compact" type="button">
+                                        <a class="btn-primary-action btn-compact" href="https://meet.jit.si/mediconnect-{{ appt.id }}" target="_blank" rel="noopener">
                                             <i class="fas fa-video"></i> Join Call
-                                        </button>
+                                        </a>
                                     {% else %}
                                         <button class="btn-primary-action btn-compact disabled" type="button" disabled>
                                             <i class="fas fa-clock"></i> Join Call (at time)

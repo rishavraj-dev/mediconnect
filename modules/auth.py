@@ -280,7 +280,7 @@ def patient_dashboard():
                     f"{appt.get('date')} {appt.get('time')}",
                     "%Y-%m-%d %H:%M"
                 )
-                window_start = appointment_time - timedelta(minutes=15)
+                window_start = appointment_time
                 window_end = appointment_time + timedelta(minutes=60)
                 appt["call_active"] = window_start <= now <= window_end
             except Exception:
@@ -323,7 +323,7 @@ def patient_appointments():
                     f"{appt.get('date')} {appt.get('time')}",
                     "%Y-%m-%d %H:%M"
                 )
-                window_start = appointment_time - timedelta(minutes=15)
+                window_start = appointment_time
                 window_end = appointment_time + timedelta(minutes=60)
                 appt["call_active"] = window_start <= now <= window_end
             except Exception:
@@ -459,7 +459,7 @@ def doctor_dashboard():
                     f"{appt.get('date')} {appt.get('time')}",
                     "%Y-%m-%d %H:%M"
                 )
-                window_start = appointment_time - timedelta(minutes=15)
+                window_start = appointment_time
                 window_end = appointment_time + timedelta(minutes=60)
                 appt["call_active"] = window_start <= now <= window_end
             except Exception:
@@ -526,7 +526,7 @@ def doctor_appointments():
                     f"{appt.get('date')} {appt.get('time')}",
                     "%Y-%m-%d %H:%M"
                 )
-                window_start = appointment_time - timedelta(minutes=15)
+                window_start = appointment_time
                 window_end = appointment_time + timedelta(minutes=60)
                 appt["call_active"] = window_start <= now <= window_end
             except Exception:
