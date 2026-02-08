@@ -52,6 +52,15 @@ Notes
 - OTPs are sent only to the registered email address.
 - Doctor login requires admin approval before access is granted.
 
+Email Notifications
+-------------------
+MediConnect sends both plain-text and HTML emails for key events:
+- Onboarding welcome email after OTP verification (patients and doctors).
+- Doctor approval and rejection updates.
+- Appointment updates (requested, accepted, rejected, completed).
+- Follow-up requested and scheduled notifications.
+- Prescription issued notifications.
+
 Patient Experience
 ------------------
 

@@ -29,7 +29,7 @@ def _should_send_email(db, email, role):
         return DEFAULT_NOTIFY_EMAIL
     return settings.get("notify_email", DEFAULT_NOTIFY_EMAIL)
 
-def _send_email(to_address, subject, body):
+def _send_email(to_address, subject, body, html_body=None):
     if not to_address:
         return False
 
@@ -39,6 +39,8 @@ def _send_email(to_address, subject, body):
                       sender="MediConnect <aiuser.first@gmail.com>",
                       recipients=[to_address])
         msg.body = body
+        if html_body:
+            msg.html = html_body
         mail.send(msg)
         current_app.logger.info("Email sent to %s with subject '%s'", to_address, subject)
         return True
@@ -60,6 +62,34 @@ def _get_availability_rules(db, doctor_email):
 
 def _parse_datetime(date_value, time_value):
     return datetime.strptime(f"{date_value} {time_value}", "%Y-%m-%d %H:%M")
+
+def _wrap_email_html(title, intro, details=None, cta_text=None, cta_url=None, footer=None):
+    details_html = ""
+    if details:
+        items = "".join([f"<li>{item}</li>" for item in details])
+        details_html = f"<ul>{items}</ul>"
+
+    cta_html = ""
+    if cta_text and cta_url:
+        cta_html = (
+            f"<p><a href=\"{cta_url}\" "
+            "style=\"display:inline-block;padding:10px 18px;"
+            "background:#0B6E4F;color:#FFFFFF;text-decoration:none;"
+            "border-radius:8px;font-weight:600;\">"
+            f"{cta_text}</a></p>"
+        )
+
+    footer_html = f"<p style=\"color:#6B7280;font-size:12px;\">{footer}</p>" if footer else ""
+
+    return (
+        "<div style=\"font-family:Arial,Helvetica,sans-serif;line-height:1.6;color:#0F172A;\">"
+        f"<h2 style=\"margin:0 0 10px;\">{title}</h2>"
+        f"<p>{intro}</p>"
+        f"{details_html}"
+        f"{cta_html}"
+        f"{footer_html}"
+        "</div>"
+    )
 
 def _build_session_user(user_data):
     session_user = {
@@ -236,8 +266,48 @@ def verify_otp():
 
             session['user'] = _build_session_user(user_data)
 
+            base_url = request.host_url.rstrip("/")
             if user_data.get('role') == 'patient':
+                subject = "Welcome to MediConnect"
+                body = (
+                    f"Hello {user_data.get('name')},\n\n"
+                    "Your account is ready. You can now book appointments, upload reports, and manage your care.\n\n"
+                    "Log in any time to continue."
+                )
+                html_body = _wrap_email_html(
+                    "Welcome to MediConnect",
+                    f"Hello {user_data.get('name')}, your account is ready.",
+                    [
+                        "Book appointments with verified doctors",
+                        "Upload and manage reports",
+                        "View prescriptions and follow-ups"
+                    ],
+                    "Open Dashboard",
+                    f"{base_url}{url_for('auth.patient_dashboard')}",
+                    "If you did not create this account, please contact support."
+                )
+                _send_email(user_data.get('email'), subject, body, html_body)
                 return redirect(url_for('auth.patient_dashboard'))
+
+            subject = "Doctor Account Created"
+            body = (
+                f"Hello Dr. {user_data.get('name')},\n\n"
+                "Your account has been created and is pending admin approval.\n"
+                "You will receive an email once your account is approved."
+            )
+            html_body = _wrap_email_html(
+                "Doctor Account Created",
+                f"Hello Dr. {user_data.get('name')}, your account is pending approval.",
+                [
+                    "We verify credentials before access is granted",
+                    "You will receive an approval email shortly"
+                ],
+                "Go to Login",
+                f"{base_url}{url_for('auth.login_doctor')}",
+                "If you did not create this account, please contact support."
+            )
+            _send_email(user_data.get('email'), subject, body, html_body)
+
             if user_data.get("status") != "approved":
                 flash("Your doctor account is pending approval")
                 return redirect(url_for('auth.login_doctor'))
@@ -1016,7 +1086,22 @@ def create_appointment():
             f"Reason: {reason or 'N/A'}\n\n"
             "Please log in to MediConnect to review the request."
         )
-        _send_email(doctor.get('email'), "New Appointment Request", body)
+        base_url = request.host_url.rstrip("/")
+        html_body = _wrap_email_html(
+            "New Appointment Request",
+            f"You have a new appointment request from {session['user']['name']}.",
+            [
+                f"Date: {date_value}",
+                f"Time: {time_value}",
+                f"Issue: {issue_category}",
+                f"Details: {issue_detail or 'N/A'}",
+                f"Reason: {reason or 'N/A'}"
+            ],
+            "Review Request",
+            f"{base_url}{url_for('auth.doctor_dashboard')}",
+            "Please log in to MediConnect to review the request."
+        )
+        _send_email(doctor.get('email'), "New Appointment Request", body, html_body)
 
     reports = []
     report_files = request.files.getlist('reports')
@@ -1098,7 +1183,20 @@ def update_appointment_status(appointment_id, action):
             f"Issue: {appointment.get('issue_category')}\n\n"
             "Thank you for using MediConnect."
         )
-        _send_email(appointment.get("patient_email"), "Appointment Update", body)
+        base_url = request.host_url.rstrip("/")
+        html_body = _wrap_email_html(
+            "Appointment Update",
+            f"Your appointment with Dr. {appointment.get('doctor_name')} has been {status}.",
+            [
+                f"Date: {appointment.get('date')}",
+                f"Time: {appointment.get('time')}",
+                f"Issue: {appointment.get('issue_category')}"
+            ],
+            "View Appointments",
+            f"{base_url}{url_for('auth.patient_appointments')}",
+            "Thank you for using MediConnect."
+        )
+        _send_email(appointment.get("patient_email"), "Appointment Update", body, html_body)
 
     flash("Appointment updated")
     return redirect(url_for('auth.doctor_dashboard'))
@@ -1132,7 +1230,19 @@ def complete_appointment(appointment_id):
             f"Date: {appointment.get('date')}\nTime: {appointment.get('time')}\n\n"
             "You can review your consultation notes and prescriptions in your dashboard."
         )
-        _send_email(appointment.get("patient_email"), "Appointment Completed", body)
+        base_url = request.host_url.rstrip("/")
+        html_body = _wrap_email_html(
+            "Appointment Completed",
+            f"Your appointment with Dr. {appointment.get('doctor_name')} is marked completed.",
+            [
+                f"Date: {appointment.get('date')}",
+                f"Time: {appointment.get('time')}"
+            ],
+            "View Prescriptions",
+            f"{base_url}{url_for('auth.patient_prescriptions')}",
+            "You can review your notes and prescriptions in your dashboard."
+        )
+        _send_email(appointment.get("patient_email"), "Appointment Completed", body, html_body)
 
     flash("Appointment marked as completed")
     return redirect(url_for('auth.doctor_dashboard'))
@@ -1185,6 +1295,29 @@ def add_prescription(appointment_id):
     })
 
     flash("Prescription added")
+    if _should_send_email(db, appointment.get("patient_email"), "patient"):
+        base_url = request.host_url.rstrip("/")
+        body = (
+            f"Hello {appointment.get('patient_name')},\n\n"
+            f"Dr. {appointment.get('doctor_name')} issued a prescription for your appointment on {appointment.get('date')}.\n"
+            f"Medication: {medication}\nDosage: {dosage}\n"
+            f"Frequency: {frequency or 'N/A'}\nDuration: {duration or 'N/A'}\n\n"
+            "You can view full details in your dashboard."
+        )
+        html_body = _wrap_email_html(
+            "Prescription Issued",
+            f"Dr. {appointment.get('doctor_name')} issued a prescription for your appointment.",
+            [
+                f"Medication: {medication}",
+                f"Dosage: {dosage}",
+                f"Frequency: {frequency or 'N/A'}",
+                f"Duration: {duration or 'N/A'}"
+            ],
+            "View Prescriptions",
+            f"{base_url}{url_for('auth.patient_prescriptions')}",
+            "Follow your doctor's instructions for best results."
+        )
+        _send_email(appointment.get("patient_email"), "Prescription Issued", body, html_body)
     _log_audit(db, session['user']['email'], session['user']['role'], "prescription_create", {
         "prescription_id": str(result.inserted_id)
     })
@@ -1347,7 +1480,19 @@ def schedule_followup(appointment_id):
             f"Date: {date_value}\nTime: {time_value}\n\n"
             "Please log in to MediConnect for details."
         )
-        _send_email(appointment.get("patient_email"), "Follow-up Scheduled", body)
+        base_url = request.host_url.rstrip("/")
+        html_body = _wrap_email_html(
+            "Follow-up Scheduled",
+            f"A follow-up visit has been scheduled with Dr. {appointment.get('doctor_name')}.",
+            [
+                f"Date: {date_value}",
+                f"Time: {time_value}"
+            ],
+            "View Appointments",
+            f"{base_url}{url_for('auth.patient_appointments')}",
+            "Please log in to MediConnect for details."
+        )
+        _send_email(appointment.get("patient_email"), "Follow-up Scheduled", body, html_body)
 
     _log_audit(db, session['user']['email'], session['user']['role'], "followup_schedule", {
         "appointment_id": appointment_id
@@ -1396,7 +1541,16 @@ def request_followup(appointment_id):
             f"{appointment.get('patient_name')} requested a follow-up appointment.\n\n"
             f"Note: {note or 'N/A'}\n"
         )
-        _send_email(appointment.get("doctor_email"), "Follow-up Requested", body)
+        base_url = request.host_url.rstrip("/")
+        html_body = _wrap_email_html(
+            "Follow-up Requested",
+            f"{appointment.get('patient_name')} requested a follow-up appointment.",
+            [f"Note: {note or 'N/A'}"],
+            "Open Appointments",
+            f"{base_url}{url_for('auth.doctor_appointments')}",
+            "Please review and schedule as needed."
+        )
+        _send_email(appointment.get("doctor_email"), "Follow-up Requested", body, html_body)
 
     _log_audit(db, session['user']['email'], session['user']['role'], "followup_request", {
         "appointment_id": appointment_id
@@ -1612,6 +1766,27 @@ def admin_approve_doctor(doctor_id):
         {"$set": {"status": "approved", "approved_at": datetime.utcnow()}}
     )
 
+    if _should_send_email(db, doctor.get('email'), "doctor"):
+        base_url = request.host_url.rstrip("/")
+        subject = "Your MediConnect Doctor Account is Approved"
+        body = (
+            f"Hello Dr. {doctor.get('name')},\n\n"
+            "Your doctor account has been approved. You can now sign in and manage appointments.\n\n"
+            "Login: " + f"{base_url}{url_for('auth.login_doctor')}"
+        )
+        html_body = _wrap_email_html(
+            "Doctor Account Approved",
+            f"Hello Dr. {doctor.get('name')}, your account is now approved.",
+            [
+                "Access your dashboard and manage appointments",
+                "Set your availability in the schedule"
+            ],
+            "Sign In",
+            f"{base_url}{url_for('auth.login_doctor')}",
+            "If you did not create this account, please contact support."
+        )
+        _send_email(doctor.get('email'), subject, body, html_body)
+
     _log_audit(db, session['admin']['email'], "admin", "doctor_approve", {
         "doctor_email": doctor.get("email")
     })
@@ -1642,6 +1817,24 @@ def admin_reject_doctor(doctor_id):
         {"_id": doctor_object_id},
         {"$set": {"status": "rejected", "rejected_at": datetime.utcnow(), "rejection_reason": reason}}
     )
+
+    if _should_send_email(db, doctor.get('email'), "doctor"):
+        subject = "Your MediConnect Doctor Account Status"
+        body = (
+            f"Hello Dr. {doctor.get('name')},\n\n"
+            "Your doctor account was not approved at this time.\n"
+            f"Reason: {reason or 'No reason provided'}\n\n"
+            "You can update your details and reapply if needed."
+        )
+        html_body = _wrap_email_html(
+            "Doctor Account Not Approved",
+            f"Hello Dr. {doctor.get('name')}, your account was not approved.",
+            [f"Reason: {reason or 'No reason provided'}"],
+            None,
+            None,
+            "You can update your details and reapply if needed."
+        )
+        _send_email(doctor.get('email'), subject, body, html_body)
 
     _log_audit(db, session['admin']['email'], "admin", "doctor_reject", {
         "doctor_email": doctor.get("email"),

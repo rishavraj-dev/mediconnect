@@ -30,6 +30,15 @@ Authentication Summary
 - Doctors must be approved by an admin before accessing the doctor dashboard.
 - Admin login uses email and password.
 
+Email Notifications
+-------------------
+MediConnect sends plain-text and HTML emails for key events:
+- Onboarding welcome emails after OTP verification (patients and doctors).
+- Doctor approval and rejection updates.
+- Appointment requested/accepted/rejected/completed updates.
+- Follow-up requested and scheduled updates.
+- Prescription issued notifications.
+
 Project Structure
 -----------------
 - app.py: Flask app entry point and mail setup
@@ -146,6 +155,7 @@ Operational Notes
 - OTP emails are sent via Brevo SMTP using the credentials in .env.
 - Doctors cannot log in until their status is approved.
 - Admin login still uses passwords and is not OTP-based.
+- Email notifications include both plain-text and HTML bodies.
 
 Troubleshooting
 ---------------
