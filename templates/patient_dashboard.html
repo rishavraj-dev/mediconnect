@@ -44,6 +44,9 @@
                 <a href="{{ url_for('auth.patient_records') }}" class="nav-item">
                     <i class="fas fa-file-medical"></i> Medical Records
                 </a>
+                <a href="{{ url_for('auth.patient_timeline') }}" class="nav-item">
+                    <i class="fas fa-stream"></i> Timeline
+                </a>
                 <a href="{{ url_for('auth.patient_prescriptions') }}" class="nav-item">
                     <i class="fas fa-prescription"></i> Prescriptions
                 </a>
@@ -159,6 +162,26 @@
                             <textarea id="issue_detail" name="issue_detail" rows="3" placeholder="Share symptoms or concerns"></textarea>
                         </div>
                         <div class="form-group full-width">
+                            <label for="symptoms">Symptoms (optional)</label>
+                            <textarea id="symptoms" name="symptoms" rows="2" placeholder="Key symptoms"></textarea>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="allergies">Allergies (optional)</label>
+                            <input type="text" id="allergies" name="allergies" placeholder="e.g., Penicillin">
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="medications">Current Medications (optional)</label>
+                            <input type="text" id="medications" name="medications" placeholder="e.g., Metformin 500mg">
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="conditions">Existing Conditions (optional)</label>
+                            <input type="text" id="conditions" name="conditions" placeholder="e.g., Diabetes, Hypertension">
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="vitals">Vitals (optional)</label>
+                            <input type="text" id="vitals" name="vitals" placeholder="e.g., BP 120/80, Temp 98.6F">
+                        </div>
+                        <div class="form-group full-width">
                             <label for="reason">Reason (optional)</label>
                             <textarea id="reason" name="reason" rows="3" placeholder="Briefly describe your concern"></textarea>
                         </div>
@@ -193,6 +216,31 @@
                         <p>Get medicines delivered home</p>
                     </a>
                 </div>
+            </div>
+
+            <div class="section-card">
+                <div class="section-header">
+                    <h2><i class="fas fa-calendar"></i> Availability Calendar</h2>
+                </div>
+                {% if availability_slots %}
+                    <div class="appointment-list">
+                        {% for slot in availability_slots %}
+                            <div class="appointment-card">
+                                <div class="appointment-info">
+                                    <h4>Dr. {{ slot.doctor_name or 'Doctor' }}</h4>
+                                    {% if slot.doctor_specialization %}<p><i class="fas fa-stethoscope"></i> {{ slot.doctor_specialization }}</p>{% endif %}
+                                    <p><i class="fas fa-calendar"></i> {{ slot.date }}</p>
+                                    <p><i class="fas fa-clock"></i> {{ slot.start_time }} - {{ slot.end_time }}</p>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state small">
+                        <i class="fas fa-calendar"></i>
+                        <p>No availability published yet</p>
+                    </div>
+                {% endif %}
             </div>
 
             <!-- Upcoming Appointments -->
@@ -239,15 +287,9 @@
                                         </form>
                                     {% endif %}
                                     {% if appt.status == 'confirmed' %}
-                                        {% if appt.call_active %}
-                                            <button class="btn-primary-action btn-compact" type="button">
-                                                <i class="fas fa-video"></i> Join Call
-                                            </button>
-                                        {% else %}
-                                            <button class="btn-primary-action btn-compact disabled" type="button" disabled>
-                                                <i class="fas fa-clock"></i> Join Call (at time)
-                                            </button>
-                                        {% endif %}
+                                        <a class="btn-primary-action btn-compact" href="https://meet.jit.si/mediconnect-{{ appt.id }}" target="_blank" rel="noopener">
+                                            <i class="fas fa-video"></i> Join Call
+                                        </a>
                                     {% endif %}
                                 </div>
                             </div>

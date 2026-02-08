@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>e-Prescription | MediConnect</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="dashboard-page">
+    <header class="dashboard-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo"><i class="fas fa-heartbeat"></i> MediConnect</div>
+                <div class="header-right">
+                    <div class="user-info">
+                        <i class="fas fa-file-prescription"></i>
+                        <span>e-Prescription</span>
+                    </div>
+                    <a href="{{ url_for('auth.patient_prescriptions') if user.role == 'patient' else url_for('auth.doctor_appointments') }}" class="btn-logout">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="dashboard-container">
+        <main class="dashboard-main">
+            <div class="section-card">
+                <div class="section-header">
+                    <h2><i class="fas fa-file-prescription"></i> Prescription Details</h2>
+                </div>
+                <div class="appointment-actions">
+                    <button class="btn-primary-action btn-compact" type="button" onclick="window.print()">
+                        <i class="fas fa-file-pdf"></i> Download PDF
+                    </button>
+                </div>
+                <div class="appointment-list">
+                    <div class="appointment-card">
+                        <div class="appointment-info">
+                            <h4>{{ prescription.medication }}</h4>
+                            <p><i class="fas fa-user-md"></i> Dr. {{ prescription.doctor_name }}</p>
+                            <p><i class="fas fa-user"></i> {{ prescription.patient_name }}</p>
+                            <p><i class="fas fa-notes-medical"></i> {{ prescription.dosage }}</p>
+                            {% if prescription.frequency %}<p><i class="fas fa-clock"></i> {{ prescription.frequency }}</p>{% endif %}
+                            {% if prescription.duration %}<p><i class="fas fa-hourglass"></i> {{ prescription.duration }}</p>{% endif %}
+                            <p><i class="fas fa-sync"></i> Refills: {{ prescription.refills or 0 }}</p>
+                            {% if prescription.instructions %}<p><i class="fas fa-clipboard-list"></i> {{ prescription.instructions }}</p>{% endif %}
+                            {% if prescription.notes %}<p><i class="fas fa-sticky-note"></i> {{ prescription.notes }}</p>{% endif %}
+                            <p><i class="fas fa-calendar"></i> Issued: {{ prescription.created_at.strftime('%Y-%m-%d') if prescription.created_at else '' }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

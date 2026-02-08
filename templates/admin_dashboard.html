@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | MediConnect</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="dashboard-page">
+    <header class="dashboard-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo"><i class="fas fa-heartbeat"></i> MediConnect</div>
+                <div class="header-right">
+                    <div class="user-info">
+                        <i class="fas fa-user-shield"></i>
+                        <span>{{ admin.name }}</span>
+                    </div>
+                    <a href="{{ url_for('auth.admin_logout') }}" class="btn-logout">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="dashboard-container">
+        <main class="dashboard-main">
+            <div class="page-hero">
+                <div>
+                    <h1>Admin Dashboard</h1>
+                    <p>Manage approvals, reports, users, and audits.</p>
+                </div>
+            </div>
+
+            <div class="section-card">
+                <div class="section-header">
+                    <h2><i class="fas fa-user-check"></i> Doctor Approvals</h2>
+                </div>
+                {% if pending_doctors %}
+                    <div class="appointment-list">
+                        {% for doctor in pending_doctors %}
+                            <div class="appointment-card">
+                                <div class="appointment-info">
+                                    <h4>Dr. {{ doctor.name }} <span class="status-badge status-pending">pending</span></h4>
+                                    <p><i class="fas fa-envelope"></i> {{ doctor.email }}</p>
+                                    <p><i class="fas fa-id-card"></i> {{ doctor.license_id }}</p>
+                                    <p><i class="fas fa-stethoscope"></i> {{ doctor.specialization }}</p>
+                                </div>
+                                <div class="appointment-actions">
+                                    <form method="POST" action="{{ url_for('auth.admin_approve_doctor', doctor_id=doctor._id) }}">
+                                        <button class="btn-success" type="submit">
+                                            <i class="fas fa-check"></i> Approve
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('auth.admin_reject_doctor', doctor_id=doctor._id) }}">
+                                        <input type="text" name="reason" placeholder="Rejection reason">
+                                        <button class="btn-danger" type="submit">
+                                            <i class="fas fa-times"></i> Reject
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state small">
+                        <i class="fas fa-user-check"></i>
+                        <p>No pending doctor approvals</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="section-card">
+                <div class="section-header">
+                    <h2><i class="fas fa-flag"></i> Reports</h2>
+                </div>
+                {% if reports %}
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Doctor</th>
+                                <th>Patient</th>
+                                <th>Reason</th>
+                                <th>Details</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for report in reports %}
+                                <tr>
+                                    <td>{{ report.doctor_name }} ({{ report.doctor_email }})</td>
+                                    <td>{{ report.patient_email }}</td>
+                                    <td>{{ report.reason }}</td>
+                                    <td>{{ report.details or 'N/A' }}</td>
+                                    <td>{{ report.created_at.strftime('%Y-%m-%d') if report.created_at else '' }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <div class="empty-state small">
+                        <i class="fas fa-flag"></i>
+                        <p>No reports submitted</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="section-card">
+                <div class="section-header">
+                    <h2><i class="fas fa-users-cog"></i> Users</h2>
+                </div>
+                {% if users %}
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Update</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users %}
+                                <tr>
+                                    <td>{{ user.name }}</td>
+                                    <td>{{ user.email }}</td>
+                                    <td>{{ user.role }}</td>
+                                    <td>{{ user.status or 'active' }}</td>
+                                    <td>
+                                        <form method="POST" action="{{ url_for('auth.admin_update_user_role', user_id=user._id) }}">
+                                            <select name="role" required>
+                                                <option value="patient" {% if user.role == 'patient' %}selected{% endif %}>patient</option>
+                                                <option value="doctor" {% if user.role == 'doctor' %}selected{% endif %}>doctor</option>
+                                                <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>admin</option>
+                                            </select>
+                                            <button class="btn-primary-action btn-compact" type="submit">
+                                                <i class="fas fa-save"></i> Save
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <div class="empty-state small">
+                        <i class="fas fa-users"></i>
+                        <p>No users found</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="section-card">
+                <div class="section-header">
+                    <h2><i class="fas fa-clipboard-list"></i> Audit Logs</h2>
+                </div>
+                {% if audit_logs %}
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Actor</th>
+                                <th>Role</th>
+                                <th>Action</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in audit_logs %}
+                                <tr>
+                                    <td>{{ log.actor_email }}</td>
+                                    <td>{{ log.role }}</td>
+                                    <td>{{ log.action }}</td>
+                                    <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M') if log.created_at else '' }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <div class="empty-state small">
+                        <i class="fas fa-clipboard-list"></i>
+                        <p>No audit logs</p>
+                    </div>
+                {% endif %}
+            </div>
+        </main>
+    </div>
+</body>
+</html>

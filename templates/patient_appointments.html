@@ -41,6 +41,9 @@
                 <a href="{{ url_for('auth.patient_records') }}" class="nav-item">
                     <i class="fas fa-file-medical"></i> Medical Records
                 </a>
+                <a href="{{ url_for('auth.patient_timeline') }}" class="nav-item">
+                    <i class="fas fa-stream"></i> Timeline
+                </a>
                 <a href="{{ url_for('auth.patient_prescriptions') }}" class="nav-item">
                     <i class="fas fa-prescription"></i> Prescriptions
                 </a>
@@ -80,6 +83,13 @@
                                     {% if appt.general_physician %}<p><i class="fas fa-user-md"></i> General Physician First</p>{% endif %}
                                     {% if appt.issue_detail %}<p><i class="fas fa-notes-medical"></i> {{ appt.issue_detail }}</p>{% endif %}
                                     {% if appt.reason %}<p><i class="fas fa-notes-medical"></i> {{ appt.reason }}</p>{% endif %}
+                                    {% if appt.intake %}
+                                        {% if appt.intake.symptoms %}<p><i class="fas fa-stethoscope"></i> Symptoms: {{ appt.intake.symptoms }}</p>{% endif %}
+                                        {% if appt.intake.allergies %}<p><i class="fas fa-exclamation-triangle"></i> Allergies: {{ appt.intake.allergies }}</p>{% endif %}
+                                        {% if appt.intake.medications %}<p><i class="fas fa-pills"></i> Medications: {{ appt.intake.medications }}</p>{% endif %}
+                                        {% if appt.intake.conditions %}<p><i class="fas fa-notes-medical"></i> Conditions: {{ appt.intake.conditions }}</p>{% endif %}
+                                        {% if appt.intake.vitals %}<p><i class="fas fa-heartbeat"></i> Vitals: {{ appt.intake.vitals }}</p>{% endif %}
+                                    {% endif %}
                                     {% if appt.reports %}
                                         <div class="report-list">
                                             <span>Reports:</span>
@@ -119,6 +129,12 @@
                                                 </button>
                                             </form>
                                         {% endif %}
+                                        <form class="notes-form" method="POST" action="{{ url_for('auth.request_followup', appointment_id=appt.id) }}">
+                                            <textarea name="followup_note" rows="2" placeholder="Request a follow-up (optional note)"></textarea>
+                                            <button class="btn-primary-action btn-compact" type="submit">
+                                                <i class="fas fa-calendar-plus"></i> Request Follow-up
+                                            </button>
+                                        </form>
                                     {% endif %}
                                 </div>
                                 <div class="appointment-actions">
@@ -129,18 +145,19 @@
                                             </button>
                                         </form>
                                     {% endif %}
+                                    <a class="btn-secondary-action btn-compact" href="{{ url_for('auth.appointment_chat', appointment_id=appt.id) }}">
+                                        <i class="fas fa-comments"></i> Chat
+                                    </a>
                                     {% if appt.status == 'confirmed' %}
-                                        {% if appt.call_active %}
-                                            <a class="btn-primary-action btn-compact" href="https://meet.jit.si/mediconnect-{{ appt.id }}" target="_blank" rel="noopener">
-                                                <i class="fas fa-video"></i> Join Call
-                                            </a>
-                                        {% else %}
-                                            <button class="btn-primary-action btn-compact disabled" type="button" disabled>
-                                                <i class="fas fa-clock"></i> Join Call (at time)
-                                            </button>
-                                        {% endif %}
+                                        <a class="btn-primary-action btn-compact" href="https://meet.jit.si/mediconnect-{{ appt.id }}" target="_blank" rel="noopener">
+                                            <i class="fas fa-video"></i> Join Call
+                                        </a>
                                     {% endif %}
                                 </div>
+                                <details class="chat-embed">
+                                    <summary><i class="fas fa-comments"></i> Open Chat</summary>
+                                    <iframe src="{{ url_for('auth.appointment_chat', appointment_id=appt.id) }}" title="Chat"></iframe>
+                                </details>
                             </div>
                         {% endfor %}
                     </div>
@@ -152,6 +169,30 @@
                         <a class="btn-secondary-action" href="{{ url_for('auth.patient_dashboard') }}#schedule-appointment">
                             <i class="fas fa-plus"></i> Book Appointment
                         </a>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="section-card">
+                <div class="section-header">
+                    <h2><i class="fas fa-calendar-plus"></i> Follow-ups</h2>
+                </div>
+                {% if followups %}
+                    <div class="appointment-list">
+                        {% for item in followups %}
+                            <div class="appointment-card">
+                                <div class="appointment-info">
+                                    <h4>Dr. {{ item.doctor_name }} <span class="status-badge status-{{ item.status }}">{{ item.status }}</span></h4>
+                                    {% if item.date %}<p><i class="fas fa-calendar"></i> {{ item.date }} at {{ item.time }}</p>{% endif %}
+                                    {% if item.note %}<p><i class="fas fa-notes-medical"></i> {{ item.note }}</p>{% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state small">
+                        <i class="fas fa-calendar-plus"></i>
+                        <p>No follow-ups yet</p>
                     </div>
                 {% endif %}
             </div>

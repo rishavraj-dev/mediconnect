@@ -1,4 +1,5 @@
 from flask import Flask, render_template
+from flask_socketio import SocketIO
 from flask_mail import Mail
 from pymongo import MongoClient
 import os
@@ -8,6 +9,7 @@ load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "super_secret_key")
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static', 'uploads')
 
@@ -38,4 +40,4 @@ def home():
     return render_template('index.html', status=status, color=color)
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    socketio.run(app, debug=True, port=5000)

@@ -79,6 +79,13 @@
                                     <p><i class="fas fa-calendar"></i> {{ appt.date }} at {{ appt.time }}</p>
                                     {% if appt.issue_category %}<p><i class="fas fa-clipboard-list"></i> {{ appt.issue_category }}</p>{% endif %}
                                     {% if appt.issue_detail %}<p><i class="fas fa-notes-medical"></i> {{ appt.issue_detail }}</p>{% endif %}
+                                    {% if appt.intake %}
+                                        {% if appt.intake.symptoms %}<p><i class="fas fa-stethoscope"></i> Symptoms: {{ appt.intake.symptoms }}</p>{% endif %}
+                                        {% if appt.intake.allergies %}<p><i class="fas fa-exclamation-triangle"></i> Allergies: {{ appt.intake.allergies }}</p>{% endif %}
+                                        {% if appt.intake.medications %}<p><i class="fas fa-pills"></i> Medications: {{ appt.intake.medications }}</p>{% endif %}
+                                        {% if appt.intake.conditions %}<p><i class="fas fa-notes-medical"></i> Conditions: {{ appt.intake.conditions }}</p>{% endif %}
+                                        {% if appt.intake.vitals %}<p><i class="fas fa-heartbeat"></i> Vitals: {{ appt.intake.vitals }}</p>{% endif %}
+                                    {% endif %}
                                     {% if appt.reports %}
                                         <div class="report-list">
                                             <span>Reports:</span>
@@ -166,22 +173,23 @@
                                     <form class="notes-form" method="POST" action="{{ url_for('auth.add_prescription', appointment_id=appt.id) }}">
                                         <input type="text" name="medication" placeholder="Medication" required>
                                         <input type="text" name="dosage" placeholder="Dosage" required>
+                                        <input type="text" name="frequency" placeholder="Frequency (e.g., 2x/day)">
+                                        <input type="text" name="duration" placeholder="Duration (e.g., 7 days)">
+                                        <input type="number" name="refills" min="0" placeholder="Refills">
                                         <textarea name="instructions" rows="2" placeholder="Instructions"></textarea>
+                                        <textarea name="notes" rows="2" placeholder="Notes (optional)"></textarea>
                                         <button class="btn-success" type="submit">
                                             <i class="fas fa-prescription"></i> Add Prescription
                                         </button>
                                     </form>
                                 </div>
                                 <div class="appointment-actions">
-                                    {% if appt.call_active %}
-                                        <a class="btn-primary-action btn-compact" href="https://meet.jit.si/mediconnect-{{ appt.id }}" target="_blank" rel="noopener">
-                                            <i class="fas fa-video"></i> Join Call
-                                        </a>
-                                    {% else %}
-                                        <button class="btn-primary-action btn-compact disabled" type="button" disabled>
-                                            <i class="fas fa-clock"></i> Join Call (at time)
-                                        </button>
-                                    {% endif %}
+                                    <a class="btn-secondary-action btn-compact" href="{{ url_for('auth.appointment_chat', appointment_id=appt.id) }}">
+                                        <i class="fas fa-comments"></i> Chat
+                                    </a>
+                                    <a class="btn-primary-action btn-compact" href="https://meet.jit.si/mediconnect-{{ appt.id }}" target="_blank" rel="noopener">
+                                        <i class="fas fa-video"></i> Join Call
+                                    </a>
                                     <form method="POST" action="{{ url_for('auth.complete_appointment', appointment_id=appt.id) }}">
                                         <button class="btn-success" type="submit">
                                             <i class="fas fa-check-double"></i> Mark Completed
@@ -199,6 +207,10 @@
                                         </button>
                                     </form>
                                 </div>
+                                <details class="chat-embed">
+                                    <summary><i class="fas fa-comments"></i> Open Chat</summary>
+                                    <iframe src="{{ url_for('auth.appointment_chat', appointment_id=appt.id) }}" title="Chat"></iframe>
+                                </details>
                             </div>
                         {% endfor %}
                     </div>
@@ -223,6 +235,14 @@
                                     <h4>{{ appt.patient_name }} <span class="status-badge status-confirmed">completed</span></h4>
                                     <p><i class="fas fa-calendar"></i> {{ appt.date }} at {{ appt.time }}</p>
                                     {% if appt.consultation_notes %}<p><i class="fas fa-notes-medical"></i> {{ appt.consultation_notes }}</p>{% endif %}
+                                    <form class="notes-form" method="POST" action="{{ url_for('auth.schedule_followup', appointment_id=appt.id) }}">
+                                        <input type="date" name="followup_date" required>
+                                        <input type="time" name="followup_time" required>
+                                        <textarea name="followup_note" rows="2" placeholder="Follow-up note (optional)"></textarea>
+                                        <button class="btn-primary-action btn-compact" type="submit">
+                                            <i class="fas fa-calendar-plus"></i> Schedule Follow-up
+                                        </button>
+                                    </form>
                                 </div>
                             </div>
                         {% endfor %}

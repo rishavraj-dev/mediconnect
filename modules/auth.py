@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, current_app
+from flask_socketio import emit, join_room
 from flask_mail import Message
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -13,6 +14,7 @@ ALLOWED_REPORT_EXTENSIONS = {"pdf", "png", "jpg", "jpeg", "doc", "docx"}
 DEFAULT_NOTIFY_EMAIL = True
 DEFAULT_NOTIFY_SMS = False
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
+MAX_CHAT_MESSAGE_LEN = 1000
 
 def is_allowed_report(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_REPORT_EXTENSIONS
@@ -43,6 +45,21 @@ def _send_email(to_address, subject, body):
     except Exception:
         current_app.logger.exception("Email send failed to %s with subject '%s'", to_address, subject)
         return False
+
+def _log_audit(db, actor_email, role, action, metadata=None):
+    db.audit_logs.insert_one({
+        "actor_email": actor_email,
+        "role": role,
+        "action": action,
+        "metadata": metadata or {},
+        "created_at": datetime.utcnow()
+    })
+
+def _get_availability_rules(db, doctor_email):
+    return db.availability_rules.find_one({"doctor_email": doctor_email}) or {}
+
+def _parse_datetime(date_value, time_value):
+    return datetime.strptime(f"{date_value} {time_value}", "%Y-%m-%d %H:%M")
 
 # --- PATIENT ROUTE ---
 @auth_bp.route('/register/patient', methods=['GET', 'POST'])
@@ -75,6 +92,7 @@ def register_patient():
             'address': address,
             'email': email,
             'password': generate_password_hash(password),
+            'status': 'active',
             'settings': {
                 'notify_email': DEFAULT_NOTIFY_EMAIL,
                 'notify_sms': DEFAULT_NOTIFY_SMS
@@ -125,6 +143,7 @@ def register_doctor():
             'years_experience': years_experience,
             'email': email,
             'password': generate_password_hash(password),
+            'status': 'pending',
             'settings': {
                 'notify_email': DEFAULT_NOTIFY_EMAIL,
                 'notify_sms': DEFAULT_NOTIFY_SMS
@@ -153,7 +172,15 @@ def verify_otp():
             # Save User to DB
             user_data = session.pop('temp_user')
             user_data.pop('otp')
+            if user_data.get("role") == "doctor" and not user_data.get("status"):
+                user_data["status"] = "pending"
+            if user_data.get("role") == "patient" and not user_data.get("status"):
+                user_data["status"] = "active"
             db.users.insert_one(user_data)
+
+            _log_audit(db, user_data.get("email"), user_data.get("role"), "register", {
+                "status": user_data.get("status")
+            })
             
             # Log the user in automatically
             session['user'] = {
@@ -166,6 +193,9 @@ def verify_otp():
             if user_data['role'] == 'patient':
                 return redirect(url_for('auth.patient_dashboard'))
             else:
+                if user_data.get("status") != "approved":
+                    flash("Your doctor account is pending approval")
+                    return redirect(url_for('auth.login_doctor'))
                 return redirect(url_for('auth.doctor_dashboard'))
         else:
             flash("Invalid OTP")
@@ -217,6 +247,7 @@ def login_patient():
                 'gender': user.get('gender'),
                 'address': user.get('address')
             }
+            _log_audit(db, user['email'], user['role'], "login", {})
             return redirect(url_for('auth.patient_dashboard'))
         else:
             flash("Invalid email or password!")
@@ -235,6 +266,10 @@ def login_doctor():
         user = db.users.find_one({"email": email, "role": "doctor"})
         
         if user and check_password_hash(user['password'], password):
+            status = user.get("status")
+            if status and status != "approved":
+                flash("Your doctor account is pending approval")
+                return redirect(url_for('auth.login_doctor'))
             session['user'] = {
                 'email': user['email'],
                 'name': user['name'],
@@ -245,6 +280,7 @@ def login_doctor():
                 'clinic_address': user.get('clinic_address'),
                 'years_experience': user.get('years_experience')
             }
+            _log_audit(db, user['email'], user['role'], "login", {})
             return redirect(url_for('auth.doctor_dashboard'))
         else:
             flash("Invalid email or password!")
@@ -268,6 +304,21 @@ def patient_dashboard():
     appointments = list(db.appointments.find(
         {"patient_email": session['user']['email']}
     ).sort("created_at", -1))
+
+    today_str = date.today().isoformat()
+    availability_slots = list(db.availability.find(
+        {"date": {"$gte": today_str}}
+    ).sort([("date", 1), ("start_time", 1)]).limit(100))
+    doctor_emails = list({slot.get("doctor_email") for slot in availability_slots if slot.get("doctor_email")})
+    doctor_map = {}
+    if doctor_emails:
+        doctors_cursor = db.users.find({"email": {"$in": doctor_emails}, "role": "doctor"}, {"password": 0})
+        doctor_map = {doc.get("email"): doc for doc in doctors_cursor}
+    for slot in availability_slots:
+        slot["id"] = str(slot.get("_id"))
+        doc = doctor_map.get(slot.get("doctor_email"), {})
+        slot["doctor_name"] = doc.get("name")
+        slot["doctor_specialization"] = doc.get("specialization")
 
     now = datetime.now()
 
@@ -294,6 +345,7 @@ def patient_dashboard():
         user=session['user'],
         doctors=doctors,
         appointments=appointments,
+        availability_slots=availability_slots,
         upcoming_count=upcoming_count,
         completed_count=completed_count
     )
@@ -313,6 +365,12 @@ def patient_appointments():
     reviews = list(db.reviews.find({"patient_email": session['user']['email']}))
     reviewed_map = {review.get("appointment_id"): True for review in reviews}
 
+    followups = list(db.followups.find({
+        "patient_email": session['user']['email']
+    }).sort("created_at", -1))
+    for item in followups:
+        item["id"] = str(item["_id"])
+
     now = datetime.now()
     for appt in appointments:
         appt["id"] = str(appt["_id"])
@@ -329,7 +387,7 @@ def patient_appointments():
             except Exception:
                 appt["call_active"] = False
 
-    return render_template('patient_appointments.html', user=session['user'], appointments=appointments, reviewed_map=reviewed_map)
+    return render_template('patient_appointments.html', user=session['user'], appointments=appointments, reviewed_map=reviewed_map, followups=followups)
 
 @auth_bp.route('/patient/records')
 def patient_records():
@@ -620,6 +678,27 @@ def doctor_schedule():
 
     from app import db
     if request.method == 'POST':
+        form_type = request.form.get('form_type')
+        if form_type == "rules":
+            allow_weekends = request.form.get('allow_weekends') == "on"
+            buffer_minutes = request.form.get('buffer_minutes')
+            max_daily_appointments = request.form.get('max_daily_appointments')
+            min_notice_hours = request.form.get('min_notice_hours')
+            db.availability_rules.update_one(
+                {"doctor_email": session['user']['email']},
+                {"$set": {
+                    "doctor_email": session['user']['email'],
+                    "allow_weekends": allow_weekends,
+                    "buffer_minutes": int(buffer_minutes) if buffer_minutes else 0,
+                    "max_daily_appointments": int(max_daily_appointments) if max_daily_appointments else 0,
+                    "min_notice_hours": int(min_notice_hours) if min_notice_hours else 0,
+                    "updated_at": datetime.utcnow()
+                }},
+                upsert=True
+            )
+            flash("Availability rules updated")
+            return redirect(url_for('auth.doctor_schedule'))
+
         date_value = request.form.get('date')
         start_time = request.form.get('start_time')
         end_time = request.form.get('end_time')
@@ -637,7 +716,15 @@ def doctor_schedule():
     slots = list(db.availability.find({"doctor_email": session['user']['email']}).sort("date", 1))
     for slot in slots:
         slot["id"] = str(slot["_id"])
-    return render_template('doctor_schedule.html', user=session['user'], slots=slots)
+    rules = _get_availability_rules(db, session['user']['email'])
+    if not rules:
+        rules = {
+            "allow_weekends": True,
+            "buffer_minutes": 0,
+            "max_daily_appointments": 0,
+            "min_notice_hours": 0
+        }
+    return render_template('doctor_schedule.html', user=session['user'], slots=slots, rules=rules)
 
 @auth_bp.route('/doctor/profile', methods=['GET', 'POST'])
 def doctor_profile():
@@ -732,6 +819,11 @@ def create_appointment():
     issue_category = request.form.get('issue_category')
     issue_detail = request.form.get('issue_detail')
     general_physician = request.form.get('general_physician') == "on"
+    symptoms = request.form.get('symptoms')
+    allergies = request.form.get('allergies')
+    medications = request.form.get('medications')
+    conditions = request.form.get('conditions')
+    vitals = request.form.get('vitals')
 
     if not date_value or not time_value or not issue_category:
         flash("Please select an issue, date, and time")
@@ -759,6 +851,70 @@ def create_appointment():
         flash("This doctor is not available for appointments")
         return redirect(url_for('auth.patient_dashboard'))
 
+    rules = _get_availability_rules(db, doctor.get('email'))
+    if rules:
+        allow_weekends = rules.get("allow_weekends", True)
+        min_notice_hours = int(rules.get("min_notice_hours") or 0)
+        buffer_minutes = int(rules.get("buffer_minutes") or 0)
+        max_daily = int(rules.get("max_daily_appointments") or 0)
+
+        appointment_time = _parse_datetime(date_value, time_value)
+        if not allow_weekends and appointment_time.weekday() in [5, 6]:
+            flash("This doctor is not available on weekends")
+            return redirect(url_for('auth.patient_dashboard'))
+
+        if min_notice_hours:
+            min_time = datetime.now() + timedelta(hours=min_notice_hours)
+            if appointment_time < min_time:
+                flash("Please choose a later time for this doctor")
+                return redirect(url_for('auth.patient_dashboard'))
+
+        if max_daily:
+            daily_count = db.appointments.count_documents({
+                "doctor_email": doctor.get('email'),
+                "date": date_value,
+                "status": {"$nin": ["cancelled", "rejected"]}
+            })
+            if daily_count >= max_daily:
+                flash("This doctor has reached the daily limit")
+                return redirect(url_for('auth.patient_dashboard'))
+
+        if buffer_minutes:
+            existing = list(db.appointments.find({
+                "doctor_email": doctor.get('email'),
+                "date": date_value,
+                "status": {"$nin": ["cancelled", "rejected"]}
+            }, {"time": 1}))
+            for item in existing:
+                try:
+                    existing_time = _parse_datetime(date_value, item.get("time"))
+                except Exception:
+                    continue
+                diff_minutes = abs(int((appointment_time - existing_time).total_seconds() / 60))
+                if diff_minutes < buffer_minutes:
+                    flash("This time conflicts with the doctor's buffer window")
+                    return redirect(url_for('auth.patient_dashboard'))
+
+    slots = list(db.availability.find({
+        "doctor_email": doctor.get('email'),
+        "date": date_value
+    }))
+    if slots:
+        appointment_time = _parse_datetime(date_value, time_value)
+        in_slot = False
+        for slot in slots:
+            try:
+                start = _parse_datetime(slot.get("date"), slot.get("start_time"))
+                end = _parse_datetime(slot.get("date"), slot.get("end_time"))
+            except Exception:
+                continue
+            if start <= appointment_time <= end:
+                in_slot = True
+                break
+        if not in_slot:
+            flash("This time is outside the doctor's availability")
+            return redirect(url_for('auth.patient_dashboard'))
+
     appointment = {
         "patient_email": session['user']['email'],
         "patient_name": session['user']['name'],
@@ -771,6 +927,13 @@ def create_appointment():
         "issue_category": issue_category,
         "issue_detail": issue_detail or "",
         "general_physician": general_physician,
+        "intake": {
+            "symptoms": symptoms or "",
+            "allergies": allergies or "",
+            "medications": medications or "",
+            "conditions": conditions or "",
+            "vitals": vitals or ""
+        },
         "consultation_notes": "",
         "reports": [],
         "status": "pending",
@@ -830,6 +993,10 @@ def create_appointment():
         )
 
     flash("Appointment request sent to doctor")
+    _log_audit(db, session['user']['email'], session['user']['role'], "appointment_create", {
+        "appointment_id": appointment_id,
+        "doctor_email": doctor.get('email')
+    })
     return redirect(url_for('auth.patient_dashboard'))
 
 # --- UPDATE APPOINTMENT STATUS (DOCTOR) ---
@@ -928,13 +1095,17 @@ def add_prescription(appointment_id):
 
     medication = request.form.get('medication')
     dosage = request.form.get('dosage')
+    frequency = request.form.get('frequency')
+    duration = request.form.get('duration')
+    refills = request.form.get('refills')
     instructions = request.form.get('instructions')
+    notes = request.form.get('notes')
 
     if not medication or not dosage:
         flash("Medication and dosage are required")
         return redirect(url_for('auth.doctor_dashboard'))
 
-    db.prescriptions.insert_one({
+    result = db.prescriptions.insert_one({
         "appointment_id": str(appointment_object_id),
         "patient_email": appointment.get('patient_email'),
         "patient_name": appointment.get('patient_name'),
@@ -942,11 +1113,18 @@ def add_prescription(appointment_id):
         "doctor_name": appointment.get('doctor_name'),
         "medication": medication,
         "dosage": dosage,
+        "frequency": frequency or "",
+        "duration": duration or "",
+        "refills": int(refills) if refills else 0,
         "instructions": instructions or "",
+        "notes": notes or "",
         "created_at": datetime.utcnow()
     })
 
     flash("Prescription added")
+    _log_audit(db, session['user']['email'], session['user']['role'], "prescription_create", {
+        "prescription_id": str(result.inserted_id)
+    })
     return redirect(url_for('auth.doctor_dashboard'))
 
 # --- ADD REVIEW (PATIENT) ---
@@ -1056,6 +1234,442 @@ def update_consultation_notes(appointment_id):
     flash("Consultation notes updated")
     return redirect(url_for('auth.doctor_dashboard'))
 
+# --- FOLLOW-UP SCHEDULING ---
+@auth_bp.route('/appointments/<appointment_id>/followup', methods=['POST'])
+def schedule_followup(appointment_id):
+    if 'user' not in session or session['user']['role'] != 'doctor':
+        flash("Please login to schedule follow-ups")
+        return redirect(url_for('auth.login_doctor'))
+
+    from app import db
+    date_value = request.form.get('followup_date')
+    time_value = request.form.get('followup_time')
+    note = request.form.get('followup_note', '').strip()
+
+    if not date_value or not time_value:
+        flash("Please select follow-up date and time")
+        return redirect(url_for('auth.doctor_appointments'))
+
+    try:
+        appointment_object_id = ObjectId(appointment_id)
+    except Exception:
+        flash("Invalid appointment")
+        return redirect(url_for('auth.doctor_appointments'))
+
+    appointment = db.appointments.find_one({
+        "_id": appointment_object_id,
+        "doctor_email": session['user']['email']
+    })
+    if not appointment:
+        flash("Appointment not found")
+        return redirect(url_for('auth.doctor_appointments'))
+
+    db.followups.insert_one({
+        "appointment_id": str(appointment_object_id),
+        "doctor_email": appointment.get("doctor_email"),
+        "doctor_name": appointment.get("doctor_name"),
+        "patient_email": appointment.get("patient_email"),
+        "patient_name": appointment.get("patient_name"),
+        "date": date_value,
+        "time": time_value,
+        "note": note,
+        "status": "scheduled",
+        "created_at": datetime.utcnow()
+    })
+
+    if _should_send_email(db, appointment.get("patient_email"), "patient"):
+        body = (
+            f"Hello {appointment.get('patient_name')},\n\n"
+            f"A follow-up visit has been scheduled with Dr. {appointment.get('doctor_name')}.\n"
+            f"Date: {date_value}\nTime: {time_value}\n\n"
+            "Please log in to MediConnect for details."
+        )
+        _send_email(appointment.get("patient_email"), "Follow-up Scheduled", body)
+
+    _log_audit(db, session['user']['email'], session['user']['role'], "followup_schedule", {
+        "appointment_id": appointment_id
+    })
+
+    flash("Follow-up scheduled")
+    return redirect(url_for('auth.doctor_appointments'))
+
+@auth_bp.route('/appointments/<appointment_id>/followup/request', methods=['POST'])
+def request_followup(appointment_id):
+    if 'user' not in session or session['user']['role'] != 'patient':
+        flash("Please login to request follow-ups")
+        return redirect(url_for('auth.login_patient'))
+
+    from app import db
+    note = request.form.get('followup_note', '').strip()
+
+    try:
+        appointment_object_id = ObjectId(appointment_id)
+    except Exception:
+        flash("Invalid appointment")
+        return redirect(url_for('auth.patient_appointments'))
+
+    appointment = db.appointments.find_one({
+        "_id": appointment_object_id,
+        "patient_email": session['user']['email']
+    })
+    if not appointment:
+        flash("Appointment not found")
+        return redirect(url_for('auth.patient_appointments'))
+
+    db.followups.insert_one({
+        "appointment_id": str(appointment_object_id),
+        "doctor_email": appointment.get("doctor_email"),
+        "doctor_name": appointment.get("doctor_name"),
+        "patient_email": appointment.get("patient_email"),
+        "patient_name": appointment.get("patient_name"),
+        "note": note,
+        "status": "requested",
+        "created_at": datetime.utcnow()
+    })
+
+    if _should_send_email(db, appointment.get("doctor_email"), "doctor"):
+        body = (
+            f"Hello Dr. {appointment.get('doctor_name')},\n\n"
+            f"{appointment.get('patient_name')} requested a follow-up appointment.\n\n"
+            f"Note: {note or 'N/A'}\n"
+        )
+        _send_email(appointment.get("doctor_email"), "Follow-up Requested", body)
+
+    _log_audit(db, session['user']['email'], session['user']['role'], "followup_request", {
+        "appointment_id": appointment_id
+    })
+
+    flash("Follow-up request sent")
+    return redirect(url_for('auth.patient_appointments'))
+
+# --- APPOINTMENT CHAT ---
+@auth_bp.route('/appointments/<appointment_id>/chat')
+def appointment_chat(appointment_id):
+    if 'user' not in session:
+        flash("Please login to access chat")
+        return redirect(url_for('home'))
+
+    from app import db
+    try:
+        appointment_object_id = ObjectId(appointment_id)
+    except Exception:
+        flash("Invalid appointment")
+        return redirect(url_for('home'))
+
+    appointment = db.appointments.find_one({"_id": appointment_object_id})
+    if not appointment:
+        flash("Appointment not found")
+        return redirect(url_for('home'))
+
+    user_email = session['user']['email']
+    if session['user']['role'] == 'patient' and appointment.get("patient_email") != user_email:
+        flash("Unauthorized")
+        return redirect(url_for('home'))
+    if session['user']['role'] == 'doctor' and appointment.get("doctor_email") != user_email:
+        flash("Unauthorized")
+        return redirect(url_for('home'))
+
+    messages = list(db.messages.find(
+        {"appointment_id": appointment_id}
+    ).sort("created_at", 1))
+    for msg in messages:
+        msg["id"] = str(msg.get("_id"))
+
+    return render_template(
+        'appointment_chat.html',
+        user=session['user'],
+        appointment=appointment,
+        appointment_id=appointment_id,
+        messages=messages
+    )
+
+# --- E-PRESCRIPTION VIEW ---
+@auth_bp.route('/prescriptions/<prescription_id>')
+def view_prescription(prescription_id):
+    if 'user' not in session:
+        flash("Please login to access prescriptions")
+        return redirect(url_for('home'))
+
+    from app import db
+    try:
+        prescription_object_id = ObjectId(prescription_id)
+    except Exception:
+        flash("Invalid prescription")
+        return redirect(url_for('home'))
+
+    prescription = db.prescriptions.find_one({"_id": prescription_object_id})
+    if not prescription:
+        flash("Prescription not found")
+        return redirect(url_for('home'))
+
+    if session['user']['role'] == 'patient' and prescription.get("patient_email") != session['user']['email']:
+        flash("Unauthorized")
+        return redirect(url_for('home'))
+    if session['user']['role'] == 'doctor' and prescription.get("doctor_email") != session['user']['email']:
+        flash("Unauthorized")
+        return redirect(url_for('home'))
+
+    prescription["id"] = str(prescription.get("_id"))
+    return render_template('e_prescription.html', user=session['user'], prescription=prescription)
+
+# --- MEDICAL HISTORY TIMELINE ---
+@auth_bp.route('/patient/timeline')
+def patient_timeline():
+    if 'user' not in session or session['user']['role'] != 'patient':
+        flash("Please login to access timeline")
+        return redirect(url_for('auth.login_patient'))
+
+    from app import db
+    appointments = list(db.appointments.find({
+        "patient_email": session['user']['email']
+    }))
+    prescriptions = list(db.prescriptions.find({
+        "patient_email": session['user']['email']
+    }))
+    followups = list(db.followups.find({
+        "patient_email": session['user']['email']
+    }))
+
+    timeline = []
+    for appt in appointments:
+        try:
+            timestamp = _parse_datetime(appt.get("date"), appt.get("time"))
+        except Exception:
+            timestamp = appt.get("created_at") or datetime.utcnow()
+        timeline.append({
+            "type": "appointment",
+            "title": f"Appointment with Dr. {appt.get('doctor_name')}",
+            "timestamp": timestamp,
+            "details": appt.get("issue_category")
+        })
+        if appt.get("reports"):
+            timeline.append({
+                "type": "report",
+                "title": "Reports uploaded",
+                "timestamp": appt.get("created_at") or timestamp,
+                "details": f"{len(appt.get('reports'))} file(s)"
+            })
+
+    for rx in prescriptions:
+        timeline.append({
+            "type": "prescription",
+            "title": f"Prescription from Dr. {rx.get('doctor_name')}",
+            "timestamp": rx.get("created_at") or datetime.utcnow(),
+            "details": rx.get("medication")
+        })
+
+    for item in followups:
+        try:
+            timestamp = _parse_datetime(item.get("date"), item.get("time")) if item.get("date") and item.get("time") else item.get("created_at")
+        except Exception:
+            timestamp = item.get("created_at") or datetime.utcnow()
+        timeline.append({
+            "type": "followup",
+            "title": f"Follow-up with Dr. {item.get('doctor_name')}",
+            "timestamp": timestamp,
+            "details": item.get("status")
+        })
+
+    timeline.sort(key=lambda x: x.get("timestamp") or datetime.utcnow(), reverse=True)
+    return render_template('patient_timeline.html', user=session['user'], timeline=timeline)
+
+# --- ADMIN PANEL ---
+@auth_bp.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    if request.method == 'POST':
+        from app import db
+        email = request.form.get('email').lower()
+        password = request.form.get('password')
+        user = db.users.find_one({"email": email, "role": "admin"})
+        if user and check_password_hash(user['password'], password):
+            session['admin'] = {
+                'email': user['email'],
+                'name': user.get('name') or 'Admin'
+            }
+            _log_audit(db, user['email'], user['role'], "admin_login", {})
+            return redirect(url_for('auth.admin_dashboard'))
+        flash("Invalid admin credentials")
+
+    return render_template('admin_login.html')
+
+@auth_bp.route('/admin/logout')
+def admin_logout():
+    session.pop('admin', None)
+    flash("Logged out")
+    return redirect(url_for('auth.admin_login'))
+
+@auth_bp.route('/admin/dashboard')
+def admin_dashboard():
+    if 'admin' not in session:
+        flash("Please login as admin")
+        return redirect(url_for('auth.admin_login'))
+
+    from app import db
+    pending_doctors = list(db.users.find({"role": "doctor", "status": "pending"}))
+    reports = list(db.reports.find({}).sort("created_at", -1).limit(50))
+    audit_logs = list(db.audit_logs.find({}).sort("created_at", -1).limit(100))
+    users = list(db.users.find({}, {"password": 0}).sort("created_at", -1).limit(200))
+
+    return render_template(
+        'admin_dashboard.html',
+        admin=session['admin'],
+        pending_doctors=pending_doctors,
+        reports=reports,
+        audit_logs=audit_logs,
+        users=users
+    )
+
+@auth_bp.route('/admin/doctors/<doctor_id>/approve', methods=['POST'])
+def admin_approve_doctor(doctor_id):
+    if 'admin' not in session:
+        flash("Please login as admin")
+        return redirect(url_for('auth.admin_login'))
+
+    from app import db
+    try:
+        doctor_object_id = ObjectId(doctor_id)
+    except Exception:
+        flash("Invalid doctor")
+        return redirect(url_for('auth.admin_dashboard'))
+
+    doctor = db.users.find_one({"_id": doctor_object_id, "role": "doctor"})
+    if not doctor:
+        flash("Doctor not found")
+        return redirect(url_for('auth.admin_dashboard'))
+
+    db.users.update_one(
+        {"_id": doctor_object_id},
+        {"$set": {"status": "approved", "approved_at": datetime.utcnow()}}
+    )
+
+    _log_audit(db, session['admin']['email'], "admin", "doctor_approve", {
+        "doctor_email": doctor.get("email")
+    })
+
+    flash("Doctor approved")
+    return redirect(url_for('auth.admin_dashboard'))
+
+@auth_bp.route('/admin/doctors/<doctor_id>/reject', methods=['POST'])
+def admin_reject_doctor(doctor_id):
+    if 'admin' not in session:
+        flash("Please login as admin")
+        return redirect(url_for('auth.admin_login'))
+
+    from app import db
+    reason = request.form.get('reason', '').strip()
+    try:
+        doctor_object_id = ObjectId(doctor_id)
+    except Exception:
+        flash("Invalid doctor")
+        return redirect(url_for('auth.admin_dashboard'))
+
+    doctor = db.users.find_one({"_id": doctor_object_id, "role": "doctor"})
+    if not doctor:
+        flash("Doctor not found")
+        return redirect(url_for('auth.admin_dashboard'))
+
+    db.users.update_one(
+        {"_id": doctor_object_id},
+        {"$set": {"status": "rejected", "rejected_at": datetime.utcnow(), "rejection_reason": reason}}
+    )
+
+    _log_audit(db, session['admin']['email'], "admin", "doctor_reject", {
+        "doctor_email": doctor.get("email"),
+        "reason": reason
+    })
+
+    flash("Doctor rejected")
+    return redirect(url_for('auth.admin_dashboard'))
+
+@auth_bp.route('/admin/users/<user_id>/role', methods=['POST'])
+def admin_update_user_role(user_id):
+    if 'admin' not in session:
+        flash("Please login as admin")
+        return redirect(url_for('auth.admin_login'))
+
+    from app import db
+    new_role = request.form.get('role')
+    if new_role not in ["admin", "doctor", "patient"]:
+        flash("Invalid role")
+        return redirect(url_for('auth.admin_dashboard'))
+
+    try:
+        user_object_id = ObjectId(user_id)
+    except Exception:
+        flash("Invalid user")
+        return redirect(url_for('auth.admin_dashboard'))
+
+    user = db.users.find_one({"_id": user_object_id})
+    if not user:
+        flash("User not found")
+        return redirect(url_for('auth.admin_dashboard'))
+
+    db.users.update_one({"_id": user_object_id}, {"$set": {"role": new_role}})
+    _log_audit(db, session['admin']['email'], "admin", "role_update", {
+        "user_email": user.get("email"),
+        "role": new_role
+    })
+    flash("Role updated")
+    return redirect(url_for('auth.admin_dashboard'))
+
+# --- SOCKET.IO EVENTS ---
+try:
+    from app import socketio
+
+    @socketio.on('join_appointment')
+    def handle_join(data):
+        appointment_id = data.get('appointment_id')
+        if appointment_id:
+            join_room(appointment_id)
+
+    @socketio.on('send_message')
+    def handle_message(data):
+        appointment_id = data.get('appointment_id')
+        sender_email = data.get('sender_email')
+        sender_name = data.get('sender_name')
+        sender_role = data.get('sender_role')
+        text = (data.get('text') or '').strip()
+
+        if not appointment_id or not sender_email or not text:
+            return
+        if len(text) > MAX_CHAT_MESSAGE_LEN:
+            text = text[:MAX_CHAT_MESSAGE_LEN]
+
+        from app import db
+        try:
+            appointment_object_id = ObjectId(appointment_id)
+        except Exception:
+            return
+
+        appointment = db.appointments.find_one({"_id": appointment_object_id})
+        if not appointment:
+            return
+        if sender_role == "patient" and appointment.get("patient_email") != sender_email:
+            return
+        if sender_role == "doctor" and appointment.get("doctor_email") != sender_email:
+            return
+
+        message_doc = {
+            "appointment_id": appointment_id,
+            "sender_email": sender_email,
+            "sender_name": sender_name,
+            "sender_role": sender_role,
+            "text": text,
+            "created_at": datetime.utcnow()
+        }
+        db.messages.insert_one(message_doc)
+
+        emit('new_message', {
+            "appointment_id": appointment_id,
+            "sender_email": sender_email,
+            "sender_name": sender_name,
+            "sender_role": sender_role,
+            "text": text,
+            "created_at": message_doc["created_at"].strftime("%Y-%m-%d %H:%M")
+        }, room=appointment_id)
+except Exception:
+    pass
+
 # --- REROUTE APPOINTMENT (DOCTOR) ---
 @auth_bp.route('/appointments/<appointment_id>/reroute', methods=['POST'])
 def reroute_appointment(appointment_id):
@@ -1131,6 +1745,10 @@ def reroute_appointment(appointment_id):
         _send_email(appointment.get("patient_email"), "Appointment Rerouted", body)
 
     flash("Appointment rerouted")
+    _log_audit(db, session['user']['email'], session['user']['role'], "appointment_reroute", {
+        "appointment_id": appointment_id,
+        "new_doctor_email": new_doctor.get('email')
+    })
     return redirect(url_for('auth.doctor_appointments'))
 
 # --- BLOCK/REPORT PATIENT (DOCTOR) ---
@@ -1154,6 +1772,10 @@ def doctor_block_patient(patient_email):
     )
 
     flash("Patient blocked")
+    _log_audit(db, session['user']['email'], session['user']['role'], "patient_block", {
+        "patient_email": patient_email,
+        "reason": reason
+    })
     return redirect(request.referrer or url_for('auth.doctor_patients'))
 
 @auth_bp.route('/doctor/patients/<patient_email>/unblock', methods=['POST'])
@@ -1165,6 +1787,9 @@ def doctor_unblock_patient(patient_email):
     from app import db
     db.blocks.delete_one({"doctor_email": session['user']['email'], "patient_email": patient_email})
     flash("Patient unblocked")
+    _log_audit(db, session['user']['email'], session['user']['role'], "patient_unblock", {
+        "patient_email": patient_email
+    })
     return redirect(request.referrer or url_for('auth.doctor_patients'))
 
 @auth_bp.route('/doctor/patients/<patient_email>/report', methods=['POST'])
@@ -1202,6 +1827,10 @@ def doctor_report_patient(patient_email):
         _send_email(ADMIN_EMAIL, "MediConnect Patient Report", body)
 
     flash("Report submitted")
+    _log_audit(db, session['user']['email'], session['user']['role'], "patient_report", {
+        "patient_email": patient_email,
+        "reason": reason
+    })
     return redirect(request.referrer or url_for('auth.doctor_patients'))
 
 # --- LOGOUT ---

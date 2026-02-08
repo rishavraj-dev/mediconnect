@@ -41,6 +41,9 @@
                 <a href="{{ url_for('auth.patient_records') }}" class="nav-item">
                     <i class="fas fa-file-medical"></i> Medical Records
                 </a>
+                <a href="{{ url_for('auth.patient_timeline') }}" class="nav-item">
+                    <i class="fas fa-stream"></i> Timeline
+                </a>
                 <a href="{{ url_for('auth.patient_prescriptions') }}" class="nav-item active">
                     <i class="fas fa-prescription"></i> Prescriptions
                 </a>
@@ -73,7 +76,16 @@
                                     <h4>{{ item.medication }} <span class="status-badge status-confirmed">active</span></h4>
                                     <p><i class="fas fa-user-md"></i> Dr. {{ item.doctor_name }}</p>
                                     <p><i class="fas fa-notes-medical"></i> {{ item.dosage }}</p>
+                                    {% if item.frequency %}<p><i class="fas fa-clock"></i> {{ item.frequency }}</p>{% endif %}
+                                    {% if item.duration %}<p><i class="fas fa-hourglass"></i> {{ item.duration }}</p>{% endif %}
+                                    {% if item.refills is not none %}<p><i class="fas fa-sync"></i> Refills: {{ item.refills }}</p>{% endif %}
                                     {% if item.instructions %}<p><i class="fas fa-clipboard-list"></i> {{ item.instructions }}</p>{% endif %}
+                                    {% if item.notes %}<p><i class="fas fa-sticky-note"></i> {{ item.notes }}</p>{% endif %}
+                                </div>
+                                <div class="appointment-actions">
+                                    <a class="btn-primary-action btn-compact" href="{{ url_for('auth.view_prescription', prescription_id=item.id) }}">
+                                        <i class="fas fa-file-prescription"></i> View e-Prescription
+                                    </a>
                                 </div>
                             </div>
                         {% endfor %}

@@ -234,15 +234,9 @@
                                     </form>
                                 </div>
                                 <div class="appointment-actions">
-                                    {% if appt.call_active %}
-                                        <button class="btn-primary-action btn-compact" type="button">
-                                            <i class="fas fa-video"></i> Join Call
-                                        </button>
-                                    {% else %}
-                                        <button class="btn-primary-action btn-compact disabled" type="button" disabled>
-                                            <i class="fas fa-clock"></i> Join Call (at time)
-                                        </button>
-                                    {% endif %}
+                                    <a class="btn-primary-action btn-compact" href="https://meet.jit.si/mediconnect-{{ appt.id }}" target="_blank" rel="noopener">
+                                        <i class="fas fa-video"></i> Join Call
+                                    </a>
                                 </div>
                             </div>
                         {% endfor %}

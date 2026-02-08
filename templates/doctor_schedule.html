@@ -65,7 +65,40 @@
             </div>
 
             <div class="section-card">
+                <div class="section-header">
+                    <h2><i class="fas fa-sliders-h"></i> Availability Rules</h2>
+                </div>
                 <form class="appointment-form" method="POST" action="{{ url_for('auth.doctor_schedule') }}">
+                    <input type="hidden" name="form_type" value="rules">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="checkbox-row">
+                                <input type="checkbox" name="allow_weekends" {% if rules.allow_weekends %}checked{% endif %}>
+                                Allow weekend appointments
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label for="buffer_minutes">Buffer Minutes</label>
+                            <input type="number" id="buffer_minutes" name="buffer_minutes" min="0" value="{{ rules.buffer_minutes or 0 }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="max_daily_appointments">Max Daily Appointments</label>
+                            <input type="number" id="max_daily_appointments" name="max_daily_appointments" min="0" value="{{ rules.max_daily_appointments or 0 }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="min_notice_hours">Minimum Notice (hours)</label>
+                            <input type="number" id="min_notice_hours" name="min_notice_hours" min="0" value="{{ rules.min_notice_hours or 0 }}">
+                        </div>
+                    </div>
+                    <button class="btn-primary-action" type="submit">
+                        <i class="fas fa-save"></i> Save Rules
+                    </button>
+                </form>
+            </div>
+
+            <div class="section-card">
+                <form class="appointment-form" method="POST" action="{{ url_for('auth.doctor_schedule') }}">
+                    <input type="hidden" name="form_type" value="availability">
                     <div class="form-grid">
                         <div class="form-group">
                             <label for="date">Date</label>

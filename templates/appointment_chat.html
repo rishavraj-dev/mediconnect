@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Appointment Chat | MediConnect</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body class="dashboard-page">
+    <header class="dashboard-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo"><i class="fas fa-heartbeat"></i> MediConnect</div>
+                <div class="header-right">
+                    <div class="user-info">
+                        <i class="fas fa-user-circle"></i>
+                        <span>{{ user.name }}</span>
+                    </div>
+                    <a href="{{ url_for('auth.logout') }}" class="btn-logout">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="dashboard-container">
+        <main class="dashboard-main">
+            <div class="page-hero">
+                <div>
+                    <h1>Chat</h1>
+                    <p>Appointment with Dr. {{ appointment.doctor_name }} and {{ appointment.patient_name }}</p>
+                </div>
+                <a class="btn-primary-action" href="{{ url_for('auth.patient_appointments') if user.role == 'patient' else url_for('auth.doctor_appointments') }}">
+                    <i class="fas fa-arrow-left"></i> Back
+                </a>
+            </div>
+
+            <div class="section-card chat-container">
+                <div class="chat-messages" id="chat-messages">
+                    {% for msg in messages %}
+                        <div class="chat-message {% if msg.sender_email == user.email %}self{% endif %}">
+                            <strong>{{ msg.sender_name }} ({{ msg.sender_role }})</strong>
+                            <div>{{ msg.text }}</div>
+                            <small>{{ msg.created_at.strftime('%Y-%m-%d %H:%M') if msg.created_at else '' }}</small>
+                        </div>
+                    {% endfor %}
+                </div>
+                <form class="chat-input" id="chat-form">
+                    <textarea id="chat-text" rows="2" placeholder="Type a message" required></textarea>
+                    <button class="btn-primary-action" type="submit">
+                        <i class="fas fa-paper-plane"></i> Send
+                    </button>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const socket = io();
+        const appointmentId = "{{ appointment_id }}";
+        const senderEmail = "{{ user.email }}";
+        const senderName = "{{ user.name }}";
+        const senderRole = "{{ user.role }}";
+        const messagesEl = document.getElementById('chat-messages');
+        const formEl = document.getElementById('chat-form');
+        const textEl = document.getElementById('chat-text');
+
+        socket.emit('join_appointment', { appointment_id: appointmentId });
+
+        formEl.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const text = textEl.value.trim();
+            if (!text) {
+                return;
+            }
+            socket.emit('send_message', {
+                appointment_id: appointmentId,
+                sender_email: senderEmail,
+                sender_name: senderName,
+                sender_role: senderRole,
+                text: text
+            });
+            textEl.value = '';
+        });
+
+        socket.on('new_message', (msg) => {
+            if (msg.appointment_id !== appointmentId) {
+                return;
+            }
+            const container = document.createElement('div');
+            container.className = 'chat-message' + (msg.sender_email === senderEmail ? ' self' : '');
+            container.innerHTML = `
+                <strong>${msg.sender_name} (${msg.sender_role})</strong>
+                <div>${msg.text}</div>
+                <small>${msg.created_at || ''}</small>
+            `;
+            messagesEl.appendChild(container);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        });
+    </script>
+</body>
+</html>

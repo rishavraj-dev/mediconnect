@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Settings | MediConnect</title>
+    <title>Timeline | MediConnect</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -41,7 +41,7 @@
                 <a href="{{ url_for('auth.patient_records') }}" class="nav-item">
                     <i class="fas fa-file-medical"></i> Medical Records
                 </a>
-                <a href="{{ url_for('auth.patient_timeline') }}" class="nav-item">
+                <a href="{{ url_for('auth.patient_timeline') }}" class="nav-item active">
                     <i class="fas fa-stream"></i> Timeline
                 </a>
                 <a href="{{ url_for('auth.patient_prescriptions') }}" class="nav-item">
@@ -50,7 +50,7 @@
                 <a href="{{ url_for('auth.patient_profile') }}" class="nav-item">
                     <i class="fas fa-user-circle"></i> My Profile
                 </a>
-                <a href="{{ url_for('auth.patient_settings') }}" class="nav-item active">
+                <a href="{{ url_for('auth.patient_settings') }}" class="nav-item">
                     <i class="fas fa-cog"></i> Settings
                 </a>
             </nav>
@@ -59,54 +59,32 @@
         <main class="dashboard-main">
             <div class="page-hero">
                 <div>
-                    <h1>Settings</h1>
-                    <p>Manage your notification preferences.</p>
+                    <h1>Medical Timeline</h1>
+                    <p>Your appointments, prescriptions, reports, and follow-ups in one view.</p>
                 </div>
             </div>
 
             <div class="section-card">
-                <form class="appointment-form" method="POST" action="{{ url_for('auth.patient_settings') }}">
-                    <div class="form-group full-width">
-                        <label class="checkbox-row">
-                            <input type="checkbox" name="notify_email" {% if settings.notify_email %}checked{% endif %}>
-                            Email notifications for appointments and updates
-                        </label>
+                {% if timeline %}
+                    <div class="timeline-list">
+                        {% for item in timeline %}
+                            <div class="timeline-card">
+                                <h4>{{ item.title }}</h4>
+                                <p><i class="fas fa-clock"></i> {{ item.timestamp.strftime('%Y-%m-%d %H:%M') if item.timestamp else '' }}</p>
+                                {% if item.details %}<p><i class="fas fa-notes-medical"></i> {{ item.details }}</p>{% endif %}
+                                <span class="status-badge status-confirmed">{{ item.type }}</span>
+                            </div>
+                        {% endfor %}
                     </div>
-                    <div class="form-group full-width">
-                        <label class="checkbox-row">
-                            <input type="checkbox" name="notify_sms" {% if settings.notify_sms %}checked{% endif %}>
-                            SMS reminders for upcoming visits
-                        </label>
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-stream"></i>
+                        <h3>No timeline entries yet</h3>
+                        <p>Book your first appointment to start your history.</p>
                     </div>
-                    <button class="btn-primary-action" type="submit">
-                        <i class="fas fa-save"></i> Save Settings
-                    </button>
-                </form>
+                {% endif %}
             </div>
         </main>
     </div>
-
-    <nav class="mobile-bottom-nav">
-        <a href="{{ url_for('auth.patient_dashboard') }}" class="mobile-nav-item">
-            <i class="fas fa-home"></i>
-            <span>Home</span>
-        </a>
-        <a href="{{ url_for('auth.patient_appointments') }}" class="mobile-nav-item">
-            <i class="fas fa-calendar-check"></i>
-            <span>Visits</span>
-        </a>
-        <a href="{{ url_for('auth.patient_dashboard') }}#schedule-appointment" class="mobile-nav-item">
-            <i class="fas fa-plus-circle"></i>
-            <span>Book</span>
-        </a>
-        <a href="{{ url_for('auth.patient_records') }}" class="mobile-nav-item">
-            <i class="fas fa-file-medical"></i>
-            <span>Records</span>
-        </a>
-        <a href="{{ url_for('auth.patient_profile') }}" class="mobile-nav-item">
-            <i class="fas fa-user"></i>
-            <span>Profile</span>
-        </a>
-    </nav>
 </body>
 </html>
