@@ -225,28 +225,28 @@
             <div class="footer-section">
                 <h4>For Patients</h4>
                 <ul>
-                    <li><a href="#">Find Doctors</a></li>
-                    <li><a href="#">Book Appointment</a></li>
-                    <li><a href="#">Health Records</a></li>
-                    <li><a href="#">Support</a></li>
+                    <li><a href="#features">Find Doctors</a></li>
+                    <li><a href="{{ url_for('auth.register_patient') }}">Book Appointment</a></li>
+                    <li><a href="{{ url_for('auth.login_patient') }}">Health Records</a></li>
+                    <li><a href="mailto:support@mediconnect.app">Support</a></li>
                 </ul>
             </div>
             <div class="footer-section">
                 <h4>For Doctors</h4>
                 <ul>
                     <li><a href="{{ url_for('auth.register_doctor') }}">Join Platform</a></li>
-                    <li><a href="#">Doctor Login</a></li>
-                    <li><a href="#">Resources</a></li>
-                    <li><a href="#">FAQ</a></li>
+                    <li><a href="{{ url_for('auth.login_doctor') }}">Doctor Login</a></li>
+                    <li><a href="mailto:doctor-success@mediconnect.app">Resources</a></li>
+                    <li><a href="mailto:support@mediconnect.app">FAQ</a></li>
                 </ul>
             </div>
             <div class="footer-section">
                 <h4>Company</h4>
                 <ul>
-                    <li><a href="#">About Us</a></li>
-                    <li><a href="#">Privacy Policy</a></li>
-                    <li><a href="#">Terms of Service</a></li>
-                    <li><a href="#">Contact</a></li>
+                    <li><a href="#how-it-works">About Us</a></li>
+                    <li><a href="mailto:privacy@mediconnect.app">Privacy Policy</a></li>
+                    <li><a href="mailto:legal@mediconnect.app">Terms of Service</a></li>
+                    <li><a href="mailto:hello@mediconnect.app">Contact</a></li>
                 </ul>
             </div>
         </div>

@@ -40,9 +40,11 @@
 
             <div class="otp-footer">
                 <p>Didn't receive the code?</p>
-                <button class="btn-resend" onclick="alert('Resend functionality coming soon!')">
-                    <i class="fas fa-redo"></i> Resend Code
-                </button>
+                <form method="POST" action="{{ url_for('auth.resend_otp') }}">
+                    <button class="btn-resend" type="submit">
+                        <i class="fas fa-redo"></i> Resend Code
+                    </button>
+                </form>
                 <p class="otp-note"><i class="fas fa-info-circle"></i> The code expires in 10 minutes</p>
             </div>
 

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile | MediConnect</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="dashboard-page">
+    <header class="dashboard-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo"><i class="fas fa-heartbeat"></i> MediConnect</div>
+                <div class="header-right">
+                    <div class="user-info">
+                        <i class="fas fa-user-circle"></i>
+                        <span>{{ user.name }}</span>
+                    </div>
+                    <a href="{{ url_for('auth.logout') }}" class="btn-logout">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="dashboard-container">
+        <aside class="dashboard-sidebar">
+            <nav class="sidebar-nav">
+                <a href="{{ url_for('auth.patient_dashboard') }}" class="nav-item">
+                    <i class="fas fa-th-large"></i> Dashboard
+                </a>
+                <a href="{{ url_for('auth.patient_appointments') }}" class="nav-item">
+                    <i class="fas fa-calendar-check"></i> My Appointments
+                </a>
+                <a href="{{ url_for('auth.patient_doctors') }}" class="nav-item">
+                    <i class="fas fa-search"></i> Find Doctors
+                </a>
+                <a href="{{ url_for('auth.patient_records') }}" class="nav-item">
+                    <i class="fas fa-file-medical"></i> Medical Records
+                </a>
+                <a href="{{ url_for('auth.patient_prescriptions') }}" class="nav-item">
+                    <i class="fas fa-prescription"></i> Prescriptions
+                </a>
+                <a href="{{ url_for('auth.patient_profile') }}" class="nav-item active">
+                    <i class="fas fa-user-circle"></i> My Profile
+                </a>
+                <a href="{{ url_for('auth.patient_settings') }}" class="nav-item">
+                    <i class="fas fa-cog"></i> Settings
+                </a>
+            </nav>
+        </aside>
+
+        <main class="dashboard-main">
+            <div class="page-hero">
+                <div>
+                    <h1>My Profile</h1>
+                    <p>Keep your personal details up to date.</p>
+                </div>
+            </div>
+
+            <div class="section-card">
+                <form class="appointment-form" method="POST" action="{{ url_for('auth.patient_profile') }}">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="name">Full Name</label>
+                            <input type="text" id="name" name="name" value="{{ user.name }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input type="email" id="email" value="{{ user.email }}" disabled>
+                        </div>
+                    </div>
+                    <button class="btn-primary-action" type="submit">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <nav class="mobile-bottom-nav">
+        <a href="{{ url_for('auth.patient_dashboard') }}" class="mobile-nav-item">
+            <i class="fas fa-home"></i>
+            <span>Home</span>
+        </a>
+        <a href="{{ url_for('auth.patient_appointments') }}" class="mobile-nav-item">
+            <i class="fas fa-calendar-check"></i>
+            <span>Visits</span>
+        </a>
+        <a href="{{ url_for('auth.patient_dashboard') }}#schedule-appointment" class="mobile-nav-item">
+            <i class="fas fa-plus-circle"></i>
+            <span>Book</span>
+        </a>
+        <a href="{{ url_for('auth.patient_records') }}" class="mobile-nav-item">
+            <i class="fas fa-file-medical"></i>
+            <span>Records</span>
+        </a>
+        <a href="{{ url_for('auth.patient_profile') }}" class="mobile-nav-item">
+            <i class="fas fa-user"></i>
+            <span>Profile</span>
+        </a>
+    </nav>
+</body>
+</html>

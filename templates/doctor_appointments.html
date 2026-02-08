@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Doctor Dashboard | MediConnect</title>
+    <title>Appointments | MediConnect</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body class="dashboard-page doctor-dashboard">
-    <!-- Dashboard Header -->
     <header class="dashboard-header doctor-header">
         <div class="container">
             <div class="header-content">
@@ -30,15 +29,13 @@
         </div>
     </header>
 
-    <!-- Main Dashboard -->
     <div class="dashboard-container">
-        <!-- Sidebar -->
         <aside class="dashboard-sidebar doctor-sidebar">
             <nav class="sidebar-nav">
-                <a href="{{ url_for('auth.doctor_dashboard') }}" class="nav-item active">
+                <a href="{{ url_for('auth.doctor_dashboard') }}" class="nav-item">
                     <i class="fas fa-th-large"></i> Dashboard
                 </a>
-                <a href="{{ url_for('auth.doctor_appointments') }}" class="nav-item">
+                <a href="{{ url_for('auth.doctor_appointments') }}" class="nav-item active">
                     <i class="fas fa-calendar-alt"></i> Appointments
                 </a>
                 <a href="{{ url_for('auth.doctor_patients') }}" class="nav-item">
@@ -59,104 +56,29 @@
             </nav>
         </aside>
 
-        <!-- Main Content -->
-        <main class="dashboard-main" id="dashboard">
-            <!-- Welcome Section -->
+        <main class="dashboard-main">
             <div class="page-hero doctor-hero">
                 <div>
-                    <h1>Welcome, Dr. {{ user.name }}! 👨‍⚕️</h1>
-                    <p>Today's care overview and your active consultations.</p>
-                </div>
-                <div class="doctor-badge">
-                    <i class="fas fa-id-card"></i>
-                    <div>
-                        <small>License ID</small>
-                        <strong>{{ user.license_id }}</strong>
-                    </div>
+                    <h1>Appointments</h1>
+                    <p>Accept requests, complete visits, and issue prescriptions.</p>
                 </div>
             </div>
 
-            <!-- Stats Cards -->
-            <div class="stats-grid">
-                <div class="stat-card green">
-                    <div class="stat-icon">
-                        <i class="fas fa-calendar-check"></i>
-                    </div>
-                    <div class="stat-info">
-                        <h3>{{ todays_appointments }}</h3>
-                        <p>Today's Appointments</p>
-                    </div>
-                </div>
-                <div class="stat-card blue">
-                    <div class="stat-icon">
-                        <i class="fas fa-users"></i>
-                    </div>
-                    <div class="stat-info">
-                        <h3>{{ total_patients }}</h3>
-                        <p>Total Patients</p>
-                    </div>
-                </div>
-                <div class="stat-card orange">
-                    <div class="stat-icon">
-                        <i class="fas fa-hourglass-half"></i>
-                    </div>
-                    <div class="stat-info">
-                        <h3>{{ pending_appointments | length }}</h3>
-                        <p>Pending Requests</p>
-                    </div>
-                </div>
-                <div class="stat-card purple">
-                    <div class="stat-icon">
-                        <i class="fas fa-star"></i>
-                    </div>
-                    <div class="stat-info">
-                        <h3>5.0</h3>
-                        <p>Average Rating</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Quick Actions -->
             <div class="section-card">
-                <h2><i class="fas fa-bolt"></i> Quick Actions</h2>
-                <div class="quick-actions-grid">
-                    <a class="action-card info" href="{{ url_for('auth.doctor_appointments') }}">
-                        <i class="fas fa-calendar-check"></i>
-                        <h3>Review Appointments</h3>
-                        <p>Manage confirmed and pending visits</p>
-                    </a>
-                    <a class="action-card warning" href="{{ url_for('auth.doctor_appointments') }}">
-                        <i class="fas fa-notes-medical"></i>
-                        <h3>Consultation Notes</h3>
-                        <p>Update care plans and notes</p>
-                    </a>
-                    <a class="action-card primary" href="{{ url_for('auth.doctor_schedule') }}">
-                        <i class="fas fa-clock"></i>
-                        <h3>Manage Schedule</h3>
-                        <p>Set your availability</p>
-                    </a>
-                </div>
-            </div>
-
-            <div class="content-grid">
-            <!-- Today's Appointments -->
-            <div class="section-card" id="appointments">
                 <div class="section-header">
-                    <h2><i class="fas fa-calendar-day"></i> Pending Appointment Requests</h2>
-                    <a href="#appointments" class="link-view-all">View All <i class="fas fa-arrow-right"></i></a>
+                    <h2><i class="fas fa-hourglass-half"></i> Pending Requests</h2>
                 </div>
-                {% if pending_appointments %}
+                {% set pending = appointments | selectattr('status', 'equalto', 'pending') | list %}
+                {% if pending %}
                     <div class="appointment-list">
-                        {% for appt in pending_appointments %}
+                        {% for appt in pending %}
                             <div class="appointment-card">
                                 <div class="appointment-info">
                                     <h4>{{ appt.patient_name }} <span class="status-badge status-pending">pending</span></h4>
                                     <p><i class="fas fa-envelope"></i> {{ appt.patient_email }}</p>
                                     <p><i class="fas fa-calendar"></i> {{ appt.date }} at {{ appt.time }}</p>
                                     {% if appt.issue_category %}<p><i class="fas fa-clipboard-list"></i> {{ appt.issue_category }}</p>{% endif %}
-                                    {% if appt.general_physician %}<p><i class="fas fa-user-md"></i> General Physician First</p>{% endif %}
                                     {% if appt.issue_detail %}<p><i class="fas fa-notes-medical"></i> {{ appt.issue_detail }}</p>{% endif %}
-                                    {% if appt.reason %}<p><i class="fas fa-notes-medical"></i> {{ appt.reason }}</p>{% endif %}
                                     {% if appt.reports %}
                                         <div class="report-list">
                                             <span>Reports:</span>
@@ -184,30 +106,28 @@
                         {% endfor %}
                     </div>
                 {% else %}
-                    <div class="empty-state">
+                    <div class="empty-state small">
                         <i class="fas fa-calendar-times"></i>
-                        <h3>No Pending Requests</h3>
-                        <p>You're all caught up. New appointment requests will appear here.</p>
+                        <p>No pending requests</p>
                     </div>
                 {% endif %}
             </div>
 
-            <div class="section-card" id="confirmed-appointments">
+            <div class="section-card">
                 <div class="section-header">
                     <h2><i class="fas fa-calendar-check"></i> Confirmed Appointments</h2>
                 </div>
-                {% if confirmed_appointments %}
+                {% set confirmed = appointments | selectattr('status', 'equalto', 'confirmed') | list %}
+                {% if confirmed %}
                     <div class="appointment-list">
-                        {% for appt in confirmed_appointments %}
+                        {% for appt in confirmed %}
                             <div class="appointment-card">
                                 <div class="appointment-info">
                                     <h4>{{ appt.patient_name }} <span class="status-badge status-confirmed">confirmed</span></h4>
                                     <p><i class="fas fa-envelope"></i> {{ appt.patient_email }}</p>
                                     <p><i class="fas fa-calendar"></i> {{ appt.date }} at {{ appt.time }}</p>
                                     {% if appt.issue_category %}<p><i class="fas fa-clipboard-list"></i> {{ appt.issue_category }}</p>{% endif %}
-                                    {% if appt.general_physician %}<p><i class="fas fa-user-md"></i> General Physician First</p>{% endif %}
                                     {% if appt.issue_detail %}<p><i class="fas fa-notes-medical"></i> {{ appt.issue_detail }}</p>{% endif %}
-                                    {% if appt.reason %}<p><i class="fas fa-notes-medical"></i> {{ appt.reason }}</p>{% endif %}
                                     {% if appt.reports %}
                                         <div class="report-list">
                                             <span>Reports:</span>
@@ -232,6 +152,14 @@
                                             <i class="fas fa-save"></i> Save Notes
                                         </button>
                                     </form>
+                                    <form class="notes-form" method="POST" action="{{ url_for('auth.add_prescription', appointment_id=appt.id) }}">
+                                        <input type="text" name="medication" placeholder="Medication" required>
+                                        <input type="text" name="dosage" placeholder="Dosage" required>
+                                        <textarea name="instructions" rows="2" placeholder="Instructions"></textarea>
+                                        <button class="btn-success" type="submit">
+                                            <i class="fas fa-prescription"></i> Add Prescription
+                                        </button>
+                                    </form>
                                 </div>
                                 <div class="appointment-actions">
                                     {% if appt.call_active %}
@@ -243,6 +171,11 @@
                                             <i class="fas fa-clock"></i> Join Call (at time)
                                         </button>
                                     {% endif %}
+                                    <form method="POST" action="{{ url_for('auth.complete_appointment', appointment_id=appt.id) }}">
+                                        <button class="btn-success" type="submit">
+                                            <i class="fas fa-check-double"></i> Mark Completed
+                                        </button>
+                                    </form>
                                 </div>
                             </div>
                         {% endfor %}
@@ -255,8 +188,30 @@
                 {% endif %}
             </div>
 
+            <div class="section-card">
+                <div class="section-header">
+                    <h2><i class="fas fa-check-circle"></i> Completed Visits</h2>
+                </div>
+                {% set completed = appointments | selectattr('status', 'equalto', 'completed') | list %}
+                {% if completed %}
+                    <div class="appointment-list">
+                        {% for appt in completed %}
+                            <div class="appointment-card">
+                                <div class="appointment-info">
+                                    <h4>{{ appt.patient_name }} <span class="status-badge status-confirmed">completed</span></h4>
+                                    <p><i class="fas fa-calendar"></i> {{ appt.date }} at {{ appt.time }}</p>
+                                    {% if appt.consultation_notes %}<p><i class="fas fa-notes-medical"></i> {{ appt.consultation_notes }}</p>{% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state small">
+                        <i class="fas fa-check-circle"></i>
+                        <p>No completed visits yet</p>
+                    </div>
+                {% endif %}
             </div>
-
         </main>
     </div>
 

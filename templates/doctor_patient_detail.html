@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient History | MediConnect</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="dashboard-page doctor-dashboard">
+    <header class="dashboard-header doctor-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo"><i class="fas fa-heartbeat"></i> MediConnect</div>
+                <div class="header-right">
+                    <div class="user-info">
+                        <i class="fas fa-user-md"></i>
+                        <div>
+                            <strong>Dr. {{ user.name }}</strong>
+                            <small>{{ user.specialization }}</small>
+                        </div>
+                    </div>
+                    <a href="{{ url_for('auth.logout') }}" class="btn-logout">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="dashboard-container">
+        <aside class="dashboard-sidebar doctor-sidebar">
+            <nav class="sidebar-nav">
+                <a href="{{ url_for('auth.doctor_dashboard') }}" class="nav-item">
+                    <i class="fas fa-th-large"></i> Dashboard
+                </a>
+                <a href="{{ url_for('auth.doctor_appointments') }}" class="nav-item">
+                    <i class="fas fa-calendar-alt"></i> Appointments
+                </a>
+                <a href="{{ url_for('auth.doctor_patients') }}" class="nav-item active">
+                    <i class="fas fa-users"></i> My Patients
+                </a>
+                <a href="{{ url_for('auth.doctor_schedule') }}" class="nav-item">
+                    <i class="fas fa-clock"></i> Schedule
+                </a>
+                <a href="{{ url_for('auth.doctor_reviews') }}" class="nav-item">
+                    <i class="fas fa-star"></i> Reviews
+                </a>
+                <a href="{{ url_for('auth.doctor_profile') }}" class="nav-item">
+                    <i class="fas fa-user-circle"></i> Profile
+                </a>
+                <a href="{{ url_for('auth.doctor_settings') }}" class="nav-item">
+                    <i class="fas fa-cog"></i> Settings
+                </a>
+            </nav>
+        </aside>
+
+        <main class="dashboard-main">
+            <div class="page-hero doctor-hero">
+                <div>
+                    <h1>{{ patient.name }}</h1>
+                    <p>{{ patient.email }}</p>
+                </div>
+                <a class="btn-primary-action" href="{{ url_for('auth.doctor_patients') }}">
+                    <i class="fas fa-arrow-left"></i> Back to Patients
+                </a>
+            </div>
+
+            <div class="section-card">
+                <div class="section-header">
+                    <h2><i class="fas fa-notes-medical"></i> Consultation History</h2>
+                </div>
+                {% if appointments %}
+                    <div class="appointment-list">
+                        {% for appt in appointments %}
+                            <div class="appointment-card">
+                                <div class="appointment-info">
+                                    <h4>{{ appt.date }} at {{ appt.time }} <span class="status-badge status-{{ appt.status }}">{{ appt.status }}</span></h4>
+                                    {% if appt.issue_category %}<p><i class="fas fa-clipboard-list"></i> {{ appt.issue_category }}</p>{% endif %}
+                                    {% if appt.issue_detail %}<p><i class="fas fa-notes-medical"></i> {{ appt.issue_detail }}</p>{% endif %}
+                                    {% if appt.reason %}<p><i class="fas fa-notes-medical"></i> {{ appt.reason }}</p>{% endif %}
+                                    {% if appt.reports %}
+                                        <div class="report-list">
+                                            <span>Reports:</span>
+                                            <ul>
+                                                {% for report in appt.reports %}
+                                                    <li><a href="{{ url_for('static', filename=report.url) }}" target="_blank">{{ report.name }}</a></li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                    {% endif %}
+                                    {% if appt.consultation_notes %}
+                                        <div class="notes-box">
+                                            <strong>Consultation Notes</strong>
+                                            <p>{{ appt.consultation_notes }}</p>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-notes-medical"></i>
+                        <h3>No Consultation History</h3>
+                        <p>Accept and complete appointments to build history.</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="section-card">
+                <div class="section-header">
+                    <h2><i class="fas fa-prescription"></i> Prescriptions</h2>
+                </div>
+                {% if prescriptions %}
+                    <div class="appointment-list">
+                        {% for item in prescriptions %}
+                            <div class="appointment-card">
+                                <div class="appointment-info">
+                                    <h4>{{ item.medication }}</h4>
+                                    <p><i class="fas fa-notes-medical"></i> {{ item.dosage }}</p>
+                                    {% if item.instructions %}<p><i class="fas fa-clipboard-list"></i> {{ item.instructions }}</p>{% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state small">
+                        <i class="fas fa-prescription"></i>
+                        <p>No prescriptions yet</p>
+                    </div>
+                {% endif %}
+            </div>
+        </main>
+    </div>
+
+    <nav class="mobile-bottom-nav">
+        <a href="{{ url_for('auth.doctor_dashboard') }}" class="mobile-nav-item">
+            <i class="fas fa-home"></i>
+            <span>Home</span>
+        </a>
+        <a href="{{ url_for('auth.doctor_appointments') }}" class="mobile-nav-item">
+            <i class="fas fa-calendar-alt"></i>
+            <span>Visits</span>
+        </a>
+        <a href="{{ url_for('auth.doctor_appointments') }}" class="mobile-nav-item">
+            <i class="fas fa-notes-medical"></i>
+            <span>Notes</span>
+        </a>
+        <a href="{{ url_for('auth.doctor_patients') }}" class="mobile-nav-item">
+            <i class="fas fa-users"></i>
+            <span>Patients</span>
+        </a>
+        <a href="{{ url_for('auth.doctor_profile') }}" class="mobile-nav-item">
+            <i class="fas fa-user-md"></i>
+            <span>Profile</span>
+        </a>
+    </nav>
+</body>
+</html>
