@@ -1568,7 +1568,14 @@ def admin_dashboard():
         return redirect(url_for('auth.admin_login'))
 
     from app import db
-    pending_doctors = list(db.users.find({"role": "doctor", "status": "pending"}))
+    pending_doctors = list(db.users.find({
+        "role": "doctor",
+        "$or": [
+            {"status": "pending"},
+            {"status": {"$exists": False}},
+            {"status": ""}
+        ]
+    }))
     reports = list(db.reports.find({}).sort("created_at", -1).limit(50))
     audit_logs = list(db.audit_logs.find({}).sort("created_at", -1).limit(100))
     users = list(db.users.find({}, {"password": 0}).sort("created_at", -1).limit(200))
