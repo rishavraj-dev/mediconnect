@@ -86,7 +86,7 @@
                         <i class="fas fa-calendar-check"></i>
                     </div>
                     <div class="stat-info">
-                        <h3>0</h3>
+                        <h3>{{ todays_appointments }}</h3>
                         <p>Today's Appointments</p>
                     </div>
                 </div>
@@ -95,7 +95,7 @@
                         <i class="fas fa-users"></i>
                     </div>
                     <div class="stat-info">
-                        <h3>0</h3>
+                        <h3>{{ total_patients }}</h3>
                         <p>Total Patients</p>
                     </div>
                 </div>
@@ -149,17 +149,66 @@
             <!-- Today's Appointments -->
             <div class="section-card">
                 <div class="section-header">
-                    <h2><i class="fas fa-calendar-day"></i> Today's Appointments</h2>
+                    <h2><i class="fas fa-calendar-day"></i> Pending Appointment Requests</h2>
                     <a href="#" class="link-view-all">View All <i class="fas fa-arrow-right"></i></a>
                 </div>
-                <div class="empty-state">
-                    <i class="fas fa-calendar-times"></i>
-                    <h3>No Appointments Today</h3>
-                    <p>You don't have any consultations scheduled for today. Time to relax or update your availability.</p>
-                    <button class="btn-secondary-action">
-                        <i class="fas fa-clock"></i> Set Available Hours
-                    </button>
+                {% if pending_appointments %}
+                    <div class="appointment-list">
+                        {% for appt in pending_appointments %}
+                            <div class="appointment-card">
+                                <div class="appointment-info">
+                                    <h4>{{ appt.patient_name }} <span class="status-badge status-pending">pending</span></h4>
+                                    <p><i class="fas fa-envelope"></i> {{ appt.patient_email }}</p>
+                                    <p><i class="fas fa-calendar"></i> {{ appt.date }} at {{ appt.time }}</p>
+                                    {% if appt.reason %}<p><i class="fas fa-notes-medical"></i> {{ appt.reason }}</p>{% endif %}
+                                </div>
+                                <div class="appointment-actions">
+                                    <form method="POST" action="{{ url_for('auth.update_appointment_status', appointment_id=appt.id, action='accept') }}">
+                                        <button class="btn-success" type="submit">
+                                            <i class="fas fa-check"></i> Accept
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('auth.update_appointment_status', appointment_id=appt.id, action='reject') }}">
+                                        <button class="btn-danger" type="submit">
+                                            <i class="fas fa-times"></i> Reject
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-calendar-times"></i>
+                        <h3>No Pending Requests</h3>
+                        <p>You're all caught up. New appointment requests will appear here.</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="section-card">
+                <div class="section-header">
+                    <h2><i class="fas fa-calendar-check"></i> Confirmed Appointments</h2>
                 </div>
+                {% if confirmed_appointments %}
+                    <div class="appointment-list">
+                        {% for appt in confirmed_appointments %}
+                            <div class="appointment-card">
+                                <div class="appointment-info">
+                                    <h4>{{ appt.patient_name }} <span class="status-badge status-confirmed">confirmed</span></h4>
+                                    <p><i class="fas fa-envelope"></i> {{ appt.patient_email }}</p>
+                                    <p><i class="fas fa-calendar"></i> {{ appt.date }} at {{ appt.time }}</p>
+                                    {% if appt.reason %}<p><i class="fas fa-notes-medical"></i> {{ appt.reason }}</p>{% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state small">
+                        <i class="fas fa-calendar-check"></i>
+                        <p>No confirmed appointments yet</p>
+                    </div>
+                {% endif %}
             </div>
 
             <!-- Recent Activity -->

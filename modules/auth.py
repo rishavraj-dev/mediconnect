@@ -2,6 +2,8 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from flask_mail import Message
 from werkzeug.security import generate_password_hash, check_password_hash
 import random
+from datetime import datetime, date
+from bson.objectid import ObjectId
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -165,8 +167,32 @@ def patient_dashboard():
     if 'user' not in session or session['user']['role'] != 'patient':
         flash("Please login to access dashboard")
         return redirect(url_for('auth.login_patient'))
-    
-    return render_template('patient_dashboard.html', user=session['user'])
+
+    from app import db
+
+    doctors = list(db.users.find(
+        {"role": "doctor"},
+        {"password": 0}
+    ).sort("name", 1))
+
+    appointments = list(db.appointments.find(
+        {"patient_email": session['user']['email']}
+    ).sort("created_at", -1))
+
+    for appt in appointments:
+        appt["id"] = str(appt["_id"])
+
+    upcoming_count = sum(1 for appt in appointments if appt.get("status") in ["pending", "confirmed"])
+    completed_count = sum(1 for appt in appointments if appt.get("status") == "completed")
+
+    return render_template(
+        'patient_dashboard.html',
+        user=session['user'],
+        doctors=doctors,
+        appointments=appointments,
+        upcoming_count=upcoming_count,
+        completed_count=completed_count
+    )
 
 # --- DOCTOR DASHBOARD ---
 @auth_bp.route('/dashboard/doctor')
@@ -174,8 +200,130 @@ def doctor_dashboard():
     if 'user' not in session or session['user']['role'] != 'doctor':
         flash("Please login to access dashboard")
         return redirect(url_for('auth.login_doctor'))
-    
-    return render_template('doctor_dashboard.html', user=session['user'])
+
+    from app import db
+    doctor_email = session['user']['email']
+
+    appointments = list(db.appointments.find(
+        {"doctor_email": doctor_email}
+    ).sort("created_at", -1))
+
+    for appt in appointments:
+        appt["id"] = str(appt["_id"])
+
+    today_str = date.today().isoformat()
+    todays_appointments = sum(
+        1 for appt in appointments
+        if appt.get("status") == "confirmed" and appt.get("date") == today_str
+    )
+
+    total_patients = len({appt.get("patient_email") for appt in appointments if appt.get("patient_email")})
+
+    pending_appointments = [appt for appt in appointments if appt.get("status") == "pending"]
+    confirmed_appointments = [appt for appt in appointments if appt.get("status") == "confirmed"]
+
+    return render_template(
+        'doctor_dashboard.html',
+        user=session['user'],
+        appointments=appointments,
+        pending_appointments=pending_appointments,
+        confirmed_appointments=confirmed_appointments,
+        todays_appointments=todays_appointments,
+        total_patients=total_patients
+    )
+
+# --- CREATE APPOINTMENT (PATIENT) ---
+@auth_bp.route('/appointments/create', methods=['POST'])
+def create_appointment():
+    if 'user' not in session or session['user']['role'] != 'patient':
+        flash("Please login to book an appointment")
+        return redirect(url_for('auth.login_patient'))
+
+    from app import db
+
+    doctor_email = request.form.get('doctor_email')
+    date_value = request.form.get('date')
+    time_value = request.form.get('time')
+    reason = request.form.get('reason')
+
+    if not doctor_email or not date_value or not time_value:
+        flash("Please select a doctor, date, and time")
+        return redirect(url_for('auth.patient_dashboard'))
+
+    doctor = db.users.find_one({"email": doctor_email, "role": "doctor"})
+    if not doctor:
+        flash("Selected doctor not found")
+        return redirect(url_for('auth.patient_dashboard'))
+
+    appointment = {
+        "patient_email": session['user']['email'],
+        "patient_name": session['user']['name'],
+        "doctor_email": doctor.get('email'),
+        "doctor_name": doctor.get('name'),
+        "doctor_specialization": doctor.get('specialization'),
+        "date": date_value,
+        "time": time_value,
+        "reason": reason or "",
+        "status": "pending",
+        "created_at": datetime.utcnow()
+    }
+
+    db.appointments.insert_one(appointment)
+    flash("Appointment request sent to doctor")
+    return redirect(url_for('auth.patient_dashboard'))
+
+# --- UPDATE APPOINTMENT STATUS (DOCTOR) ---
+@auth_bp.route('/appointments/<appointment_id>/<action>', methods=['POST'])
+def update_appointment_status(appointment_id, action):
+    if 'user' not in session or session['user']['role'] != 'doctor':
+        flash("Please login to manage appointments")
+        return redirect(url_for('auth.login_doctor'))
+
+    if action not in ["accept", "reject"]:
+        flash("Invalid action")
+        return redirect(url_for('auth.doctor_dashboard'))
+
+    from app import db
+    doctor_email = session['user']['email']
+
+    status = "confirmed" if action == "accept" else "rejected"
+
+    try:
+        appointment_object_id = ObjectId(appointment_id)
+    except Exception:
+        flash("Invalid appointment")
+        return redirect(url_for('auth.doctor_dashboard'))
+
+    db.appointments.update_one(
+        {"_id": appointment_object_id, "doctor_email": doctor_email},
+        {"$set": {"status": status, "updated_at": datetime.utcnow()}}
+    )
+
+    flash("Appointment updated")
+    return redirect(url_for('auth.doctor_dashboard'))
+
+# --- CANCEL APPOINTMENT (PATIENT) ---
+@auth_bp.route('/appointments/<appointment_id>/cancel', methods=['POST'])
+def cancel_appointment(appointment_id):
+    if 'user' not in session or session['user']['role'] != 'patient':
+        flash("Please login to manage appointments")
+        return redirect(url_for('auth.login_patient'))
+
+    from app import db
+
+    try:
+        appointment_object_id = ObjectId(appointment_id)
+    except Exception:
+        flash("Invalid appointment")
+        return redirect(url_for('auth.patient_dashboard'))
+
+    db.appointments.update_one(
+        {"_id": appointment_object_id, "patient_email": session['user']['email']},
+        {"$set": {"status": "cancelled", "updated_at": datetime.utcnow()}}
+    )
+
+    flash("Appointment cancelled")
+    return redirect(url_for('auth.patient_dashboard'))
 
 # --- LOGOUT ---
 @auth_bp.route('/logout')

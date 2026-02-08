@@ -32,41 +32,41 @@
         <!-- Sidebar -->
         <aside class="dashboard-sidebar">
             <nav class="sidebar-nav">
-                <a href="#" class="nav-item active">
+                <a href="#dashboard" class="nav-item active">
                     <i class="fas fa-th-large"></i> Dashboard
                 </a>
-                <a href="#" class="nav-item">
+                <a href="#my-appointments" class="nav-item">
                     <i class="fas fa-calendar-check"></i> My Appointments
                 </a>
-                <a href="#" class="nav-item">
+                <a href="#find-doctors" class="nav-item">
                     <i class="fas fa-search"></i> Find Doctors
                 </a>
-                <a href="#" class="nav-item">
+                <a href="#medical-records" class="nav-item">
                     <i class="fas fa-file-medical"></i> Medical Records
                 </a>
-                <a href="#" class="nav-item">
+                <a href="#prescriptions" class="nav-item">
                     <i class="fas fa-prescription"></i> Prescriptions
                 </a>
-                <a href="#" class="nav-item">
+                <a href="#my-profile" class="nav-item">
                     <i class="fas fa-user-circle"></i> My Profile
                 </a>
-                <a href="#" class="nav-item">
+                <a href="#settings" class="nav-item">
                     <i class="fas fa-cog"></i> Settings
                 </a>
             </nav>
         </aside>
 
         <!-- Main Content -->
-        <main class="dashboard-main">
+        <main class="dashboard-main" id="dashboard">
             <!-- Welcome Section -->
             <div class="welcome-section">
                 <div>
                     <h1>Welcome, {{ user.name }}! 👋</h1>
                     <p>Here's what's happening with your health today</p>
                 </div>
-                <button class="btn-primary-action">
+                <a class="btn-primary-action" href="#schedule-appointment">
                     <i class="fas fa-plus"></i> Book New Appointment
-                </button>
+                </a>
             </div>
 
             <!-- Stats Cards -->
@@ -76,7 +76,7 @@
                         <i class="fas fa-calendar-check"></i>
                     </div>
                     <div class="stat-info">
-                        <h3>0</h3>
+                        <h3>{{ upcoming_count }}</h3>
                         <p>Upcoming Appointments</p>
                     </div>
                 </div>
@@ -85,7 +85,7 @@
                         <i class="fas fa-check-circle"></i>
                     </div>
                     <div class="stat-info">
-                        <h3>0</h3>
+                        <h3>{{ completed_count }}</h3>
                         <p>Completed Consultations</p>
                     </div>
                 </div>
@@ -109,46 +109,151 @@
                 </div>
             </div>
 
+            <!-- Find Doctors -->
+            <div class="section-card" id="find-doctors">
+                <h2><i class="fas fa-search"></i> Find Doctors</h2>
+                <p class="muted-text">Select a doctor and request an appointment.</p>
+            </div>
+
+            <!-- Schedule Appointment -->
+            <div class="section-card" id="schedule-appointment">
+                <h2><i class="fas fa-calendar-plus"></i> Schedule Appointment</h2>
+                <form class="appointment-form" method="POST" action="{{ url_for('auth.create_appointment') }}">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="doctor_email">Select Doctor</label>
+                            <select id="doctor_email" name="doctor_email" required>
+                                <option value="" disabled selected>Choose a doctor</option>
+                                {% for doctor in doctors %}
+                                    <option value="{{ doctor.email }}">Dr. {{ doctor.name }} - {{ doctor.specialization }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="date">Date</label>
+                            <input type="date" id="date" name="date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="time">Time</label>
+                            <input type="time" id="time" name="time" required>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="reason">Reason (optional)</label>
+                            <textarea id="reason" name="reason" rows="3" placeholder="Briefly describe your concern"></textarea>
+                        </div>
+                    </div>
+                    <button class="btn-primary-action" type="submit">
+                        <i class="fas fa-paper-plane"></i> Request Appointment
+                    </button>
+                </form>
+            </div>
+
             <!-- Quick Actions -->
             <div class="section-card">
                 <h2><i class="fas fa-bolt"></i> Quick Actions</h2>
                 <div class="quick-actions-grid">
-                    <button class="action-card">
+                    <div class="action-card disabled" aria-disabled="true">
                         <i class="fas fa-video"></i>
                         <h3>Video Consultation</h3>
                         <p>Connect with a doctor instantly</p>
-                    </button>
-                    <button class="action-card">
+                    </div>
+                    <a class="action-card" href="#schedule-appointment">
                         <i class="fas fa-calendar-plus"></i>
                         <h3>Schedule Appointment</h3>
                         <p>Book for a later time</p>
-                    </button>
-                    <button class="action-card">
+                    </a>
+                    <a class="action-card" href="#medical-records">
                         <i class="fas fa-file-upload"></i>
                         <h3>Upload Reports</h3>
                         <p>Share your medical documents</p>
-                    </button>
-                    <button class="action-card">
+                    </a>
+                    <a class="action-card" href="#prescriptions">
                         <i class="fas fa-pills"></i>
                         <h3>Order Medicine</h3>
                         <p>Get medicines delivered home</p>
-                    </button>
+                    </a>
                 </div>
             </div>
 
             <!-- Upcoming Appointments -->
-            <div class="section-card">
+            <div class="section-card" id="my-appointments">
                 <div class="section-header">
                     <h2><i class="fas fa-calendar-alt"></i> Upcoming Appointments</h2>
-                    <a href="#" class="link-view-all">View All <i class="fas fa-arrow-right"></i></a>
+                    <a href="#my-appointments" class="link-view-all">View All <i class="fas fa-arrow-right"></i></a>
                 </div>
-                <div class="empty-state">
-                    <i class="fas fa-calendar-times"></i>
-                    <h3>No Upcoming Appointments</h3>
-                    <p>You don't have any appointments scheduled. Book a consultation with our expert doctors.</p>
-                    <button class="btn-secondary-action">
-                        <i class="fas fa-search"></i> Find a Doctor
-                    </button>
+                {% if appointments %}
+                    <div class="appointment-list">
+                        {% for appt in appointments %}
+                            <div class="appointment-card">
+                                <div class="appointment-info">
+                                    <h4>Dr. {{ appt.doctor_name }} <span class="status-badge status-{{ appt.status }}">{{ appt.status }}</span></h4>
+                                    <p><i class="fas fa-stethoscope"></i> {{ appt.doctor_specialization }}</p>
+                                    <p><i class="fas fa-calendar"></i> {{ appt.date }} at {{ appt.time }}</p>
+                                    {% if appt.reason %}<p><i class="fas fa-notes-medical"></i> {{ appt.reason }}</p>{% endif %}
+                                </div>
+                                <div class="appointment-actions">
+                                    {% if appt.status in ['pending', 'confirmed'] %}
+                                        <form method="POST" action="{{ url_for('auth.cancel_appointment', appointment_id=appt.id) }}">
+                                            <button class="btn-danger" type="submit">
+                                                <i class="fas fa-times"></i> Cancel
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-calendar-times"></i>
+                        <h3>No Upcoming Appointments</h3>
+                        <p>You don't have any appointments scheduled. Book a consultation with our expert doctors.</p>
+                        <a class="btn-secondary-action" href="#schedule-appointment">
+                            <i class="fas fa-search"></i> Find a Doctor
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="section-card" id="medical-records">
+                <h2><i class="fas fa-file-medical"></i> Medical Records</h2>
+                <div class="empty-state small">
+                    <i class="fas fa-file-upload"></i>
+                    <p>Upload and manage your medical records here.</p>
+                </div>
+            </div>
+
+            <div class="section-card" id="prescriptions">
+                <h2><i class="fas fa-prescription"></i> Prescriptions</h2>
+                <div class="empty-state small">
+                    <i class="fas fa-pills"></i>
+                    <p>Your prescriptions will appear here.</p>
+                </div>
+            </div>
+
+            <div class="section-card" id="my-profile">
+                <h2><i class="fas fa-user-circle"></i> My Profile</h2>
+                <div class="profile-grid">
+                    <div class="profile-item">
+                        <span>Name</span>
+                        <strong>{{ user.name }}</strong>
+                    </div>
+                    <div class="profile-item">
+                        <span>Email</span>
+                        <strong>{{ user.email }}</strong>
+                    </div>
+                    <div class="profile-item">
+                        <span>Role</span>
+                        <strong>{{ user.role }}</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-card" id="settings">
+                <h2><i class="fas fa-cog"></i> Settings</h2>
+                <div class="empty-state small">
+                    <i class="fas fa-sliders-h"></i>
+                    <p>Settings options will be available here.</p>
                 </div>
             </div>
 
