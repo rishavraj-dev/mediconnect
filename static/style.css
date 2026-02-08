@@ -1304,6 +1304,10 @@ footer {
     min-height: calc(100vh - 80px);
 }
 
+.dashboard-container.no-sidebar {
+    grid-template-columns: 1fr;
+}
+
 .mobile-bottom-nav {
     display: none;
 }

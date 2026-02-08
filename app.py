@@ -25,8 +25,9 @@ mail = Mail(app)
 client = MongoClient(os.getenv("MONGO_URI"))
 db = client['mediconnect_db']
 
-# Register Blueprint
-from modules.auth import auth_bp
+# Register Blueprint and Socket.IO handlers
+from modules.auth import auth_bp, register_socketio_handlers
+register_socketio_handlers(socketio)
 app.register_blueprint(auth_bp)
 
 # --- FIX: ADD THIS ROUTE BACK ---

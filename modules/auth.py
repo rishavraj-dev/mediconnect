@@ -1613,9 +1613,7 @@ def admin_update_user_role(user_id):
     return redirect(url_for('auth.admin_dashboard'))
 
 # --- SOCKET.IO EVENTS ---
-try:
-    from app import socketio
-
+def register_socketio_handlers(socketio):
     @socketio.on('join_appointment')
     def handle_join(data):
         appointment_id = data.get('appointment_id')
@@ -1667,8 +1665,6 @@ try:
             "text": text,
             "created_at": message_doc["created_at"].strftime("%Y-%m-%d %H:%M")
         }, room=appointment_id)
-except Exception:
-    pass
 
 # --- REROUTE APPOINTMENT (DOCTOR) ---
 @auth_bp.route('/appointments/<appointment_id>/reroute', methods=['POST'])
