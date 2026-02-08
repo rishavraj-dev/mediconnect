@@ -13,12 +13,12 @@
     <header class="dashboard-header">
         <div class="container">
             <div class="header-content">
-                <div class="logo"><i class="fas fa-heartbeat"></i> MediConnect</div>
+                <a href="{{ url_for('auth.patient_dashboard') }}" class="logo"><i class="fas fa-heartbeat"></i> MediConnect</a>
                 <div class="header-right">
-                    <div class="user-info">
-                        <i class="fas fa-user-circle"></i>
+                    <a href="{{ url_for('auth.patient_profile') }}" class="user-info user-info-link">
+                        <img src="{{ url_for('auth.user_avatar') }}" alt="Profile" class="user-avatar">
                         <span>{{ user.name }}</span>
-                    </div>
+                    </a>
                     <a href="{{ url_for('auth.logout') }}" class="btn-logout">
                         <i class="fas fa-sign-out-alt"></i> Logout
                     </a>
@@ -135,7 +135,7 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="doctor_email">Select Doctor</label>
+                            <label for="doctor_email">Select Doctor (optional)</label>
                             <select id="doctor_email" name="doctor_email">
                                 <option value="" disabled selected>Choose a doctor</option>
                                 {% for doctor in doctors %}
@@ -146,15 +146,12 @@
                         <div class="form-group">
                             <label for="date">Date</label>
                             <input type="date" id="date" name="date" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="time">Time</label>
-                            <input type="time" id="time" name="time" required>
+                            <small>The doctor will confirm the time after approval</small>
                         </div>
                         <div class="form-group full-width">
                             <label class="checkbox-row">
                                 <input type="checkbox" name="general_physician">
-                                Not sure? Start with a General Physician and we will route you to a specialist later.
+                                Not sure? Choose a General Physician and we will assign one for you.
                             </label>
                         </div>
                         <div class="form-group full-width">
@@ -203,7 +200,7 @@
                     <a class="action-card" href="{{ url_for('auth.patient_dashboard') }}#schedule-appointment">
                         <i class="fas fa-calendar-plus"></i>
                         <h3>Book Appointment</h3>
-                        <p>Choose a time that suits you</p>
+                        <p>Choose a day and we will confirm the time</p>
                     </a>
                     <a class="action-card" href="{{ url_for('auth.patient_records') }}">
                         <i class="fas fa-file-upload"></i>
@@ -256,7 +253,7 @@
                                 <div class="appointment-info">
                                     <h4>Dr. {{ appt.doctor_name }} <span class="status-badge status-{{ appt.status }}">{{ appt.status }}</span></h4>
                                     <p><i class="fas fa-stethoscope"></i> {{ appt.doctor_specialization }}</p>
-                                    <p><i class="fas fa-calendar"></i> {{ appt.date }} at {{ appt.time }}</p>
+                                    <p><i class="fas fa-calendar"></i> {{ appt.date }}{% if appt.time %} at {{ appt.time }}{% else %} (time to be confirmed){% endif %}</p>
                                     {% if appt.issue_category %}<p><i class="fas fa-clipboard-list"></i> {{ appt.issue_category }}</p>{% endif %}
                                     {% if appt.general_physician %}<p><i class="fas fa-user-md"></i> General Physician First</p>{% endif %}
                                     {% if appt.issue_detail %}<p><i class="fas fa-notes-medical"></i> {{ appt.issue_detail }}</p>{% endif %}
@@ -351,6 +348,10 @@
         <a href="{{ url_for('auth.patient_records') }}" class="mobile-nav-item">
             <i class="fas fa-file-medical"></i>
             <span>Records</span>
+        </a>
+        <a href="{{ url_for('auth.patient_prescriptions') }}" class="mobile-nav-item">
+            <i class="fas fa-prescription"></i>
+            <span>Rx</span>
         </a>
         <a href="{{ url_for('auth.patient_profile') }}" class="mobile-nav-item">
             <i class="fas fa-user"></i>

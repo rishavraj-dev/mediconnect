@@ -13,15 +13,15 @@
     <header class="dashboard-header doctor-header">
         <div class="container">
             <div class="header-content">
-                <div class="logo"><i class="fas fa-heartbeat"></i> MediConnect</div>
+                <a href="{{ url_for('auth.doctor_dashboard') }}" class="logo"><i class="fas fa-heartbeat"></i> MediConnect</a>
                 <div class="header-right">
-                    <div class="user-info">
-                        <i class="fas fa-user-md"></i>
+                    <a href="{{ url_for('auth.doctor_profile') }}" class="user-info user-info-link">
+                        <img src="{{ url_for('auth.user_avatar') }}" alt="Profile" class="user-avatar">
                         <div>
                             <strong>Dr. {{ user.name }}</strong>
                             <small>{{ user.specialization }}</small>
                         </div>
-                    </div>
+                    </a>
                     <a href="{{ url_for('auth.logout') }}" class="btn-logout">
                         <i class="fas fa-sign-out-alt"></i> Logout
                     </a>
@@ -152,7 +152,7 @@
                                 <div class="appointment-info">
                                     <h4>{{ appt.patient_name }} <span class="status-badge status-pending">pending</span></h4>
                                     <p><i class="fas fa-envelope"></i> {{ appt.patient_email }}</p>
-                                    <p><i class="fas fa-calendar"></i> {{ appt.date }} at {{ appt.time }}</p>
+                                    <p><i class="fas fa-calendar"></i> {{ appt.date }}{% if appt.time %} at {{ appt.time }}{% else %} (time to be confirmed){% endif %}</p>
                                     {% if appt.issue_category %}<p><i class="fas fa-clipboard-list"></i> {{ appt.issue_category }}</p>{% endif %}
                                     {% if appt.general_physician %}<p><i class="fas fa-user-md"></i> General Physician First</p>{% endif %}
                                     {% if appt.issue_detail %}<p><i class="fas fa-notes-medical"></i> {{ appt.issue_detail }}</p>{% endif %}
@@ -170,6 +170,7 @@
                                 </div>
                                 <div class="appointment-actions">
                                     <form method="POST" action="{{ url_for('auth.update_appointment_status', appointment_id=appt.id, action='accept') }}">
+                                        <input type="time" name="appointment_time" required>
                                         <button class="btn-success" type="submit">
                                             <i class="fas fa-check"></i> Accept
                                         </button>
@@ -203,7 +204,7 @@
                                 <div class="appointment-info">
                                     <h4>{{ appt.patient_name }} <span class="status-badge status-confirmed">confirmed</span></h4>
                                     <p><i class="fas fa-envelope"></i> {{ appt.patient_email }}</p>
-                                    <p><i class="fas fa-calendar"></i> {{ appt.date }} at {{ appt.time }}</p>
+                                    <p><i class="fas fa-calendar"></i> {{ appt.date }}{% if appt.time %} at {{ appt.time }}{% else %} (time to be confirmed){% endif %}</p>
                                     {% if appt.issue_category %}<p><i class="fas fa-clipboard-list"></i> {{ appt.issue_category }}</p>{% endif %}
                                     {% if appt.general_physician %}<p><i class="fas fa-user-md"></i> General Physician First</p>{% endif %}
                                     {% if appt.issue_detail %}<p><i class="fas fa-notes-medical"></i> {{ appt.issue_detail }}</p>{% endif %}

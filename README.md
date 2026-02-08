@@ -13,6 +13,9 @@ Key Features
 - Appointment scheduling with intake notes and document uploads.
 - Chat and video consultation links for active visits.
 - Prescriptions and follow-up tracking.
+- Profile photo uploads for patients and doctors.
+- Doctor verification document uploads during registration.
+- Account deletion options: immediate or scheduled in 30 days.
 - Mobile-first navigation with a consistent bottom bar on dashboards.
 - Landing page hamburger menu on mobile screens.
 
@@ -105,22 +108,29 @@ If the OTP is not received, use the Resend Code action on the OTP page.
 Patient Features
 ----------------
 - Dashboard summary for upcoming and completed appointments.
-- Book appointments with issue category, doctor, date, and time.
+- Book appointments with issue category and date; doctor confirms the time.
+- Choose General Physician for automatic doctor assignment.
 - Add intake details: symptoms, allergies, medications, conditions, vitals, and notes.
 - Upload medical reports with appointments.
 - View appointment status, chat, and join video calls.
 - Access medical records, prescriptions, and timeline history.
 - Manage profile and notification preferences.
+- Upload a profile photo.
+- Delete account immediately or schedule deletion in 30 days.
 
 Doctor Features
 ---------------
 - Dashboard overview for daily appointments and pending requests.
-- Accept or reject appointment requests.
+- Accept or reject appointment requests and set the appointment time on approval.
 - Add consultation notes and prescriptions.
 - Mark appointments as completed.
 - Manage availability schedule.
 - View patients and reviews.
 - Manage profile and notification preferences.
+- Add a professional summary.
+- Upload a profile photo.
+- Upload verification documents during registration.
+- Delete account immediately or schedule deletion in 30 days.
 
 Admin Features
 --------------
@@ -128,6 +138,7 @@ Admin Features
 - Approve or reject pending doctor registrations.
 - Review audit logs and reports.
 - Manage user roles when required.
+- View doctor verification documents in approvals and user lists.
 
 Mobile UX
 ---------
@@ -156,6 +167,7 @@ Operational Notes
 - Doctors cannot log in until their status is approved.
 - Admin login still uses passwords and is not OTP-based.
 - Email notifications include both plain-text and HTML bodies.
+- Accounts marked for deletion cannot log in.
 
 Troubleshooting
 ---------------

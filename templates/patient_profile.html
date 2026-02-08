@@ -12,12 +12,12 @@
     <header class="dashboard-header">
         <div class="container">
             <div class="header-content">
-                <div class="logo"><i class="fas fa-heartbeat"></i> MediConnect</div>
+                <a href="{{ url_for('auth.patient_dashboard') }}" class="logo"><i class="fas fa-heartbeat"></i> MediConnect</a>
                 <div class="header-right">
-                    <div class="user-info">
-                        <i class="fas fa-user-circle"></i>
+                    <a href="{{ url_for('auth.patient_profile') }}" class="user-info user-info-link">
+                        <img src="{{ url_for('auth.user_avatar') }}" alt="Profile" class="user-avatar">
                         <span>{{ user.name }}</span>
-                    </div>
+                    </a>
                     <a href="{{ url_for('auth.logout') }}" class="btn-logout">
                         <i class="fas fa-sign-out-alt"></i> Logout
                     </a>
@@ -65,37 +65,44 @@
             </div>
 
             <div class="section-card">
-                <form class="appointment-form" method="POST" action="{{ url_for('auth.patient_profile') }}">
+                <form class="appointment-form" method="POST" action="{{ url_for('auth.patient_profile') }}" enctype="multipart/form-data">
                     <div class="form-grid">
+                        <div class="form-group full-width">
+                            <label for="avatar">Profile Photo</label>
+                            <div class="avatar-row">
+                                <img src="{{ url_for('auth.user_avatar') }}" alt="Profile" class="avatar-preview">
+                                <input type="file" id="avatar" name="avatar" accept="image/png,image/jpeg">
+                            </div>
+                        </div>
                         <div class="form-group">
                             <label for="name">Full Name</label>
-                            <input type="text" id="name" name="name" value="{{ user.name }}" required>
+                            <input type="text" id="name" name="name" value="{{ profile.name }}" required>
                         </div>
                         <div class="form-group">
                             <label for="phone">Phone</label>
-                            <input type="tel" id="phone" name="phone" value="{{ user.phone or '' }}" required>
+                            <input type="tel" id="phone" name="phone" value="{{ profile.phone or '' }}" required>
                         </div>
                         <div class="form-group">
                             <label for="dob">Date of Birth</label>
-                            <input type="date" id="dob" name="dob" value="{{ user.dob or '' }}" required>
+                            <input type="date" id="dob" name="dob" value="{{ profile.dob or '' }}" required>
                         </div>
                         <div class="form-group">
                             <label for="gender">Gender</label>
                             <select id="gender" name="gender" required>
-                                <option value="" disabled {% if not user.gender %}selected{% endif %}>Select gender</option>
-                                <option value="Female" {% if user.gender == 'Female' %}selected{% endif %}>Female</option>
-                                <option value="Male" {% if user.gender == 'Male' %}selected{% endif %}>Male</option>
-                                <option value="Non-binary" {% if user.gender == 'Non-binary' %}selected{% endif %}>Non-binary</option>
-                                <option value="Prefer not to say" {% if user.gender == 'Prefer not to say' %}selected{% endif %}>Prefer not to say</option>
+                                <option value="" disabled {% if not profile.gender %}selected{% endif %}>Select gender</option>
+                                <option value="Female" {% if profile.gender == 'Female' %}selected{% endif %}>Female</option>
+                                <option value="Male" {% if profile.gender == 'Male' %}selected{% endif %}>Male</option>
+                                <option value="Non-binary" {% if profile.gender == 'Non-binary' %}selected{% endif %}>Non-binary</option>
+                                <option value="Prefer not to say" {% if profile.gender == 'Prefer not to say' %}selected{% endif %}>Prefer not to say</option>
                             </select>
                         </div>
                         <div class="form-group">
                             <label for="address">Address</label>
-                            <input type="text" id="address" name="address" value="{{ user.address or '' }}" required>
+                            <input type="text" id="address" name="address" value="{{ profile.address or '' }}" required>
                         </div>
                         <div class="form-group">
                             <label for="email">Email</label>
-                            <input type="email" id="email" value="{{ user.email }}" disabled>
+                            <input type="email" id="email" value="{{ profile.email }}" disabled>
                         </div>
                     </div>
                     <button class="btn-primary-action" type="submit">
@@ -122,6 +129,10 @@
         <a href="{{ url_for('auth.patient_records') }}" class="mobile-nav-item">
             <i class="fas fa-file-medical"></i>
             <span>Records</span>
+        </a>
+        <a href="{{ url_for('auth.patient_prescriptions') }}" class="mobile-nav-item">
+            <i class="fas fa-prescription"></i>
+            <span>Rx</span>
         </a>
         <a href="{{ url_for('auth.patient_profile') }}" class="mobile-nav-item">
             <i class="fas fa-user"></i>

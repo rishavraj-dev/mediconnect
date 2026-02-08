@@ -53,7 +53,7 @@
                     {% endif %}
                 {% endwith %}
 
-                <form action="/register/doctor" method="POST" class="auth-form">
+                <form action="/register/doctor" method="POST" class="auth-form" enctype="multipart/form-data">
                     <div class="form-group">
                         <label><i class="fas fa-user-md"></i> Doctor Name</label>
                         <input type="text" name="name" placeholder="Dr. Full Name" required autocomplete="name">
@@ -97,11 +97,22 @@
                         <label><i class="fas fa-briefcase"></i> Years of Experience</label>
                         <input type="number" name="years_experience" min="0" max="60" placeholder="e.g., 8" required>
                     </div>
+
+                    <div class="form-group">
+                        <label><i class="fas fa-align-left"></i> Professional Summary</label>
+                        <textarea name="description" rows="3" placeholder="Share your clinical focus, services, or achievements"></textarea>
+                    </div>
                     
                     <div class="form-group">
                         <label><i class="fas fa-envelope"></i> Professional Email</label>
                         <input type="email" name="email" placeholder="doctor@example.com" required autocomplete="email">
                         <small>We will email a verification code to this address</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label><i class="fas fa-file-upload"></i> Verification Document</label>
+                        <input type="file" name="proof_document" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" required>
+                        <small>Upload ID card, license, or clinic proof (pdf, png, jpg, doc)</small>
                     </div>
 
                     <div class="form-checkbox">

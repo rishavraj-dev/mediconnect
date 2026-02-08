@@ -12,12 +12,12 @@
     <header class="dashboard-header">
         <div class="container">
             <div class="header-content">
-                <div class="logo"><i class="fas fa-heartbeat"></i> MediConnect</div>
+                <a href="{{ url_for('auth.patient_dashboard') }}" class="logo"><i class="fas fa-heartbeat"></i> MediConnect</a>
                 <div class="header-right">
-                    <div class="user-info">
-                        <i class="fas fa-user-circle"></i>
+                    <a href="{{ url_for('auth.patient_profile') }}" class="user-info user-info-link">
+                        <img src="{{ url_for('auth.user_avatar') }}" alt="Profile" class="user-avatar">
                         <span>{{ user.name }}</span>
-                    </div>
+                    </a>
                     <a href="{{ url_for('auth.logout') }}" class="btn-logout">
                         <i class="fas fa-sign-out-alt"></i> Logout
                     </a>
@@ -117,6 +117,10 @@
         <a href="{{ url_for('auth.patient_records') }}" class="mobile-nav-item">
             <i class="fas fa-file-medical"></i>
             <span>Records</span>
+        </a>
+        <a href="{{ url_for('auth.patient_prescriptions') }}" class="mobile-nav-item">
+            <i class="fas fa-prescription"></i>
+            <span>Rx</span>
         </a>
         <a href="{{ url_for('auth.patient_profile') }}" class="mobile-nav-item">
             <i class="fas fa-user"></i>

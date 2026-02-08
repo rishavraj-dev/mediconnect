@@ -27,10 +27,12 @@ Register as Doctor
 ------------------
 1) Open the Doctor Registration page.
 2) Enter your professional details (name, phone, license ID, specialization, clinic address, years of experience).
-3) Enter your professional email address.
-4) Submit the form to receive a 6-digit OTP by email.
-5) Enter the OTP on the verification page to complete registration.
-6) Your account remains pending until an admin approves it.
+3) Add a short professional summary (optional).
+4) Upload a verification document (license, ID card, or clinic proof).
+5) Enter your professional email address.
+6) Submit the form to receive a 6-digit OTP by email.
+7) Enter the OTP on the verification page to complete registration.
+8) Your account remains pending until an admin approves it.
 
 Login as Patient or Doctor (Email OTP)
 --------------------------------------
@@ -61,6 +63,17 @@ MediConnect sends both plain-text and HTML emails for key events:
 - Follow-up requested and scheduled notifications.
 - Prescription issued notifications.
 
+Profile Photos and Verification Documents
+-----------------------------------------
+- Patients and doctors can upload a profile photo from their profile page.
+- Doctors must upload a verification document during registration.
+- Admins can view verification documents in the Doctor Approvals and Users sections.
+
+Account Deletion
+----------------
+- Delete Now: immediately disables the account and signs you out.
+- Delete in 30 Days: schedules deletion and signs you out.
+
 Patient Experience
 ------------------
 
@@ -76,15 +89,16 @@ Book an Appointment
 1) Go to the Patient Dashboard.
 2) Use the "Book Appointment" section to select:
 	- Issue category
-	- Doctor
-	- Date and time
+	- Doctor (or choose General Physician for automatic assignment)
+	- Date
 3) Add optional details such as symptoms, allergies, medications, conditions, vitals, and reports.
-4) Submit the request.
+4) Submit the request. The doctor will confirm the appointment time after approval.
 
 View Appointments
 -----------------
 The "My Appointments" page shows:
 - Pending, confirmed, and completed appointments.
+- Time confirmation status for pending requests.
 - Consultation notes (if provided by the doctor).
 - Actions such as cancel, chat, join call, and request follow-up.
 
@@ -111,6 +125,8 @@ Profile and Settings
 --------------------
 - Update personal profile details.
 - Manage notification preferences.
+- Upload or change your profile photo.
+- Delete your account immediately or schedule deletion in 30 days.
 
 Doctor Experience
 -----------------
@@ -127,6 +143,7 @@ Appointments Management
 -----------------------
 On the Appointments page, doctors can:
 - Accept or reject pending requests.
+- Set the appointment time when accepting a request.
 - Add consultation notes.
 - Issue prescriptions.
 - Mark appointments as completed.
@@ -145,6 +162,9 @@ Profile and Settings
 --------------------
 - Update doctor profile information.
 - Manage notification preferences.
+- Add a professional summary visible in admin approvals.
+- Upload or change your profile photo.
+- Delete your account immediately or schedule deletion in 30 days.
 
 Admin Experience
 ----------------
@@ -158,6 +178,7 @@ Doctor Approval
 ---------------
 - Review pending doctor registrations.
 - Approve or reject doctor accounts.
+- View uploaded doctor verification documents in approval cards and user lists.
 
 Audit and Reporting
 -------------------

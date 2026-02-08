@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, current_app, Response, send_file
 from flask_socketio import emit, join_room
 from flask_mail import Message
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -6,11 +6,15 @@ from werkzeug.utils import secure_filename
 import random
 from datetime import datetime, date, timedelta
 from bson.objectid import ObjectId
+from io import BytesIO
+from uuid import uuid4
+import base64
 import os
 
 auth_bp = Blueprint('auth', __name__)
 
 ALLOWED_REPORT_EXTENSIONS = {"pdf", "png", "jpg", "jpeg", "doc", "docx"}
+ALLOWED_AVATAR_EXTENSIONS = {"png", "jpg", "jpeg"}
 DEFAULT_NOTIFY_EMAIL = True
 DEFAULT_NOTIFY_SMS = False
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
@@ -18,6 +22,9 @@ MAX_CHAT_MESSAGE_LEN = 1000
 
 def is_allowed_report(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_REPORT_EXTENSIONS
+
+def is_allowed_avatar(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_AVATAR_EXTENSIONS
 
 def _get_user_settings(db, email, role):
     doc = db.users.find_one({"email": email, "role": role}, {"settings": 1})
@@ -181,12 +188,33 @@ def register_doctor():
         phone = request.form.get('phone')
         clinic_address = request.form.get('clinic_address')
         years_experience = request.form.get('years_experience')
+        description = request.form.get('description')
         email = request.form.get('email').lower()
         password = request.form.get('password')
-
         if db.users.find_one({"email": email}):
             flash("Email already registered!")
             return redirect(url_for('auth.register_doctor'))
+
+        proof_file = request.files.get('proof_document')
+
+        if not proof_file or proof_file.filename == "":
+            flash("Doctor verification document is required")
+            return redirect(url_for('auth.register_doctor'))
+
+        if not is_allowed_report(proof_file.filename):
+            flash("Unsupported document type. Please upload pdf, png, jpg, jpeg, doc, or docx")
+            return redirect(url_for('auth.register_doctor'))
+
+        upload_root = current_app.config.get('UPLOAD_FOLDER', os.path.join(current_app.root_path, 'static', 'uploads'))
+        proof_dir = os.path.join(upload_root, 'doctor_proofs')
+        os.makedirs(proof_dir, exist_ok=True)
+
+        original_name = proof_file.filename
+        safe_name = secure_filename(proof_file.filename)
+        unique_name = f"{uuid4().hex}_{safe_name}" if safe_name else f"proof_{uuid4().hex}"
+        proof_path = os.path.join(proof_dir, unique_name)
+        proof_file.save(proof_path)
+        proof_mime = proof_file.mimetype or "application/octet-stream"
 
         otp = str(random.randint(100000, 999999))
 
@@ -198,13 +226,17 @@ def register_doctor():
             'phone': phone,
             'clinic_address': clinic_address,
             'years_experience': years_experience,
+            'description': description or "",
             'email': email,
             'status': 'pending',
             'settings': {
                 'notify_email': DEFAULT_NOTIFY_EMAIL,
                 'notify_sms': DEFAULT_NOTIFY_SMS
             },
-            'otp': otp
+            'otp': otp,
+            'doctor_proof_path': proof_path,
+            'doctor_proof_name': original_name,
+            'doctor_proof_mime': proof_mime
         }
 
         if password:
@@ -238,6 +270,14 @@ def verify_otp():
                     flash("Account not found")
                     session.pop('temp_login', None)
                     return redirect(url_for('auth.login_patient'))
+                if user.get("status") == "deleted":
+                    flash("This account has been deleted")
+                    session.pop('temp_login', None)
+                    return redirect(url_for('auth.login_patient'))
+                if user.get("status") == "deletion_scheduled":
+                    flash("Account deletion is scheduled. Please contact support if this is a mistake")
+                    session.pop('temp_login', None)
+                    return redirect(url_for('auth.login_patient'))
                 if user.get("role") == "doctor" and user.get("status") != "approved":
                     flash("Your doctor account is pending approval")
                     session.pop('temp_login', None)
@@ -254,10 +294,27 @@ def verify_otp():
         if otp_input == session.get('temp_user', {}).get('otp'):
             user_data = session.pop('temp_user')
             user_data.pop('otp', None)
+            proof_path = user_data.pop('doctor_proof_path', None)
+            proof_name = user_data.pop('doctor_proof_name', None)
+            proof_mime = user_data.pop('doctor_proof_mime', None)
             if user_data.get("role") == "doctor" and not user_data.get("status"):
                 user_data["status"] = "pending"
             if user_data.get("role") == "patient" and not user_data.get("status"):
                 user_data["status"] = "active"
+
+            if user_data.get("role") == "doctor" and proof_path and os.path.exists(proof_path):
+                with open(proof_path, "rb") as proof_handle:
+                    proof_data = base64.b64encode(proof_handle.read()).decode("ascii")
+                user_data["doctor_proof"] = {
+                    "filename": proof_name or os.path.basename(proof_path),
+                    "mime": proof_mime or "application/octet-stream",
+                    "data": proof_data,
+                    "uploaded_at": datetime.utcnow()
+                }
+                try:
+                    os.remove(proof_path)
+                except Exception:
+                    current_app.logger.exception("Failed to remove proof file: %s", proof_path)
             db.users.insert_one(user_data)
 
             _log_audit(db, user_data.get("email"), user_data.get("role"), "register", {
@@ -369,6 +426,12 @@ def login_patient():
         if not user:
             flash("No patient account found for this email")
             return redirect(url_for('auth.login_patient'))
+        if user.get("status") == "deleted":
+            flash("This account has been deleted")
+            return redirect(url_for('auth.login_patient'))
+        if user.get("status") == "deletion_scheduled":
+            flash("Account deletion is scheduled. Please contact support if this is a mistake")
+            return redirect(url_for('auth.login_patient'))
 
         otp = str(random.randint(100000, 999999))
         session['temp_login'] = {
@@ -398,6 +461,13 @@ def login_doctor():
         user = db.users.find_one({"email": email, "role": "doctor"})
         if not user:
             flash("No doctor account found for this email")
+            return redirect(url_for('auth.login_doctor'))
+
+        if user.get("status") == "deleted":
+            flash("This account has been deleted")
+            return redirect(url_for('auth.login_doctor'))
+        if user.get("status") == "deletion_scheduled":
+            flash("Account deletion is scheduled. Please contact support if this is a mistake")
             return redirect(url_for('auth.login_doctor'))
 
         status = user.get("status")
@@ -458,7 +528,7 @@ def patient_dashboard():
     for appt in appointments:
         appt["id"] = str(appt["_id"])
         appt["call_active"] = False
-        if appt.get("status") == "confirmed":
+        if appt.get("status") == "confirmed" and appt.get("time"):
             try:
                 appointment_time = datetime.strptime(
                     f"{appt.get('date')} {appt.get('time')}",
@@ -508,7 +578,7 @@ def patient_appointments():
     for appt in appointments:
         appt["id"] = str(appt["_id"])
         appt["call_active"] = False
-        if appt.get("status") == "confirmed":
+        if appt.get("status") == "confirmed" and appt.get("time"):
             try:
                 appointment_time = datetime.strptime(
                     f"{appt.get('date')} {appt.get('time')}",
@@ -577,6 +647,7 @@ def patient_profile():
         dob = request.form.get('dob')
         gender = request.form.get('gender')
         address = request.form.get('address')
+        avatar_file = request.files.get('avatar')
         update_data = {}
         if name:
             update_data["name"] = name
@@ -593,6 +664,13 @@ def patient_profile():
         if address:
             update_data["address"] = address
             session['user']['address'] = address
+        if avatar_file and avatar_file.filename:
+            if not is_allowed_avatar(avatar_file.filename):
+                flash("Please upload a jpg or png profile photo")
+                return redirect(url_for('auth.patient_profile'))
+            avatar_data = base64.b64encode(avatar_file.read()).decode("ascii")
+            update_data["avatar_data"] = avatar_data
+            update_data["avatar_mime"] = avatar_file.mimetype or "image/jpeg"
         if update_data:
             update_data["updated_at"] = datetime.utcnow()
             db.users.update_one(
@@ -602,7 +680,12 @@ def patient_profile():
             flash("Profile updated")
         return redirect(url_for('auth.patient_profile'))
 
-    return render_template('patient_profile.html', user=session['user'])
+    profile_doc = db.users.find_one(
+        {"email": session['user']['email'], "role": "patient"},
+        {"password": 0}
+    ) or {}
+    profile = {**session['user'], **profile_doc}
+    return render_template('patient_profile.html', user=session['user'], profile=profile)
 
 @auth_bp.route('/patient/settings', methods=['GET', 'POST'])
 def patient_settings():
@@ -644,7 +727,7 @@ def doctor_dashboard():
     for appt in appointments:
         appt["id"] = str(appt["_id"])
         appt["call_active"] = False
-        if appt.get("status") == "confirmed":
+        if appt.get("status") == "confirmed" and appt.get("time"):
             try:
                 appointment_time = datetime.strptime(
                     f"{appt.get('date')} {appt.get('time')}",
@@ -711,7 +794,7 @@ def doctor_appointments():
     for appt in appointments:
         appt["id"] = str(appt["_id"])
         appt["call_active"] = False
-        if appt.get("status") == "confirmed":
+        if appt.get("status") == "confirmed" and appt.get("time"):
             try:
                 appointment_time = datetime.strptime(
                     f"{appt.get('date')} {appt.get('time')}",
@@ -873,6 +956,8 @@ def doctor_profile():
         phone = request.form.get('phone')
         clinic_address = request.form.get('clinic_address')
         years_experience = request.form.get('years_experience')
+        description = request.form.get('description')
+        avatar_file = request.files.get('avatar')
         update_data = {}
         if name:
             update_data["name"] = name
@@ -892,6 +977,16 @@ def doctor_profile():
         if years_experience:
             update_data["years_experience"] = years_experience
             session['user']['years_experience'] = years_experience
+        if description is not None:
+            update_data["description"] = description
+            session['user']['description'] = description
+        if avatar_file and avatar_file.filename:
+            if not is_allowed_avatar(avatar_file.filename):
+                flash("Please upload a jpg or png profile photo")
+                return redirect(url_for('auth.doctor_profile'))
+            avatar_data = base64.b64encode(avatar_file.read()).decode("ascii")
+            update_data["avatar_data"] = avatar_data
+            update_data["avatar_mime"] = avatar_file.mimetype or "image/jpeg"
         if update_data:
             update_data["updated_at"] = datetime.utcnow()
             db.users.update_one(
@@ -901,7 +996,12 @@ def doctor_profile():
             flash("Profile updated")
         return redirect(url_for('auth.doctor_profile'))
 
-    return render_template('doctor_profile.html', user=session['user'])
+    profile_doc = db.users.find_one(
+        {"email": session['user']['email'], "role": "doctor"},
+        {"password": 0}
+    ) or {}
+    profile = {**session['user'], **profile_doc}
+    return render_template('doctor_profile.html', user=session['user'], profile=profile)
 
 @auth_bp.route('/doctor/settings', methods=['GET', 'POST'])
 def doctor_settings():
@@ -958,20 +1058,23 @@ def create_appointment():
     conditions = request.form.get('conditions')
     vitals = request.form.get('vitals')
 
-    if not date_value or not time_value or not issue_category:
-        flash("Please select an issue, date, and time")
+    if not date_value or not issue_category:
+        flash("Please select an issue and date")
         return redirect(url_for('auth.patient_dashboard'))
 
     doctor = None
-    if doctor_email:
-        doctor = db.users.find_one({"email": doctor_email, "role": "doctor"})
-    elif general_physician:
-        doctor = db.users.find_one({
+    if general_physician:
+        general_pool = list(db.users.find({
             "role": "doctor",
+            "status": "approved",
             "specialization": {"$regex": "general", "$options": "i"}
-        })
-        if not doctor:
-            doctor = db.users.find_one({"role": "doctor"})
+        }))
+        if not general_pool:
+            general_pool = list(db.users.find({"role": "doctor", "status": "approved"}))
+        if general_pool:
+            doctor = random.choice(general_pool)
+    elif doctor_email:
+        doctor = db.users.find_one({"email": doctor_email, "role": "doctor", "status": "approved"})
     else:
         flash("Please select a doctor or choose General Physician")
         return redirect(url_for('auth.patient_dashboard'))
@@ -987,20 +1090,16 @@ def create_appointment():
     rules = _get_availability_rules(db, doctor.get('email'))
     if rules:
         allow_weekends = rules.get("allow_weekends", True)
-        min_notice_hours = int(rules.get("min_notice_hours") or 0)
-        buffer_minutes = int(rules.get("buffer_minutes") or 0)
         max_daily = int(rules.get("max_daily_appointments") or 0)
 
-        appointment_time = _parse_datetime(date_value, time_value)
-        if not allow_weekends and appointment_time.weekday() in [5, 6]:
+        try:
+            appointment_date = datetime.strptime(date_value, "%Y-%m-%d")
+        except Exception:
+            appointment_date = None
+
+        if appointment_date and not allow_weekends and appointment_date.weekday() in [5, 6]:
             flash("This doctor is not available on weekends")
             return redirect(url_for('auth.patient_dashboard'))
-
-        if min_notice_hours:
-            min_time = datetime.now() + timedelta(hours=min_notice_hours)
-            if appointment_time < min_time:
-                flash("Please choose a later time for this doctor")
-                return redirect(url_for('auth.patient_dashboard'))
 
         if max_daily:
             daily_count = db.appointments.count_documents({
@@ -1012,42 +1111,6 @@ def create_appointment():
                 flash("This doctor has reached the daily limit")
                 return redirect(url_for('auth.patient_dashboard'))
 
-        if buffer_minutes:
-            existing = list(db.appointments.find({
-                "doctor_email": doctor.get('email'),
-                "date": date_value,
-                "status": {"$nin": ["cancelled", "rejected"]}
-            }, {"time": 1}))
-            for item in existing:
-                try:
-                    existing_time = _parse_datetime(date_value, item.get("time"))
-                except Exception:
-                    continue
-                diff_minutes = abs(int((appointment_time - existing_time).total_seconds() / 60))
-                if diff_minutes < buffer_minutes:
-                    flash("This time conflicts with the doctor's buffer window")
-                    return redirect(url_for('auth.patient_dashboard'))
-
-    slots = list(db.availability.find({
-        "doctor_email": doctor.get('email'),
-        "date": date_value
-    }))
-    if slots:
-        appointment_time = _parse_datetime(date_value, time_value)
-        in_slot = False
-        for slot in slots:
-            try:
-                start = _parse_datetime(slot.get("date"), slot.get("start_time"))
-                end = _parse_datetime(slot.get("date"), slot.get("end_time"))
-            except Exception:
-                continue
-            if start <= appointment_time <= end:
-                in_slot = True
-                break
-        if not in_slot:
-            flash("This time is outside the doctor's availability")
-            return redirect(url_for('auth.patient_dashboard'))
-
     appointment = {
         "patient_email": session['user']['email'],
         "patient_name": session['user']['name'],
@@ -1055,7 +1118,7 @@ def create_appointment():
         "doctor_name": doctor.get('name'),
         "doctor_specialization": doctor.get('specialization'),
         "date": date_value,
-        "time": time_value,
+        "time": time_value or None,
         "reason": reason or "",
         "issue_category": issue_category,
         "issue_detail": issue_detail or "",
@@ -1080,7 +1143,7 @@ def create_appointment():
         body = (
             f"Hello Dr. {doctor.get('name')},\n\n"
             f"You have a new appointment request from {session['user']['name']}.\n"
-            f"Date: {date_value}\nTime: {time_value}\n"
+            f"Date: {date_value}\nTime: {time_value or 'TBD'}\n"
             f"Issue: {issue_category}\n"
             f"Details: {issue_detail or 'N/A'}\n"
             f"Reason: {reason or 'N/A'}\n\n"
@@ -1092,7 +1155,7 @@ def create_appointment():
             f"You have a new appointment request from {session['user']['name']}.",
             [
                 f"Date: {date_value}",
-                f"Time: {time_value}",
+                f"Time: {time_value or 'TBD'}",
                 f"Issue: {issue_category}",
                 f"Details: {issue_detail or 'N/A'}",
                 f"Reason: {reason or 'N/A'}"
@@ -1140,7 +1203,7 @@ def create_appointment():
             {"$set": {"reports": reports, "updated_at": datetime.utcnow()}}
         )
 
-    flash("Appointment request sent to doctor")
+    flash("Appointment request sent. The doctor will confirm the time.")
     _log_audit(db, session['user']['email'], session['user']['role'], "appointment_create", {
         "appointment_id": appointment_id,
         "doctor_email": doctor.get('email')
@@ -1162,6 +1225,10 @@ def update_appointment_status(appointment_id, action):
     doctor_email = session['user']['email']
 
     status = "confirmed" if action == "accept" else "rejected"
+    appointment_time = request.form.get('appointment_time')
+    if action == "accept" and not appointment_time:
+        flash("Please set an appointment time before accepting")
+        return redirect(request.referrer or url_for('auth.doctor_dashboard'))
 
     try:
         appointment_object_id = ObjectId(appointment_id)
@@ -1169,9 +1236,12 @@ def update_appointment_status(appointment_id, action):
         flash("Invalid appointment")
         return redirect(url_for('auth.doctor_dashboard'))
 
+    update_fields = {"status": status, "updated_at": datetime.utcnow()}
+    if action == "accept":
+        update_fields["time"] = appointment_time
     db.appointments.update_one(
         {"_id": appointment_object_id, "doctor_email": doctor_email},
-        {"$set": {"status": status, "updated_at": datetime.utcnow()}}
+        {"$set": update_fields}
     )
 
     appointment = db.appointments.find_one({"_id": appointment_object_id})
@@ -1179,7 +1249,7 @@ def update_appointment_status(appointment_id, action):
         body = (
             f"Hello {appointment.get('patient_name')},\n\n"
             f"Your appointment with Dr. {appointment.get('doctor_name')} has been {status}.\n"
-            f"Date: {appointment.get('date')}\nTime: {appointment.get('time')}\n"
+            f"Date: {appointment.get('date')}\nTime: {appointment.get('time') or 'TBD'}\n"
             f"Issue: {appointment.get('issue_category')}\n\n"
             "Thank you for using MediConnect."
         )
@@ -1189,7 +1259,7 @@ def update_appointment_status(appointment_id, action):
             f"Your appointment with Dr. {appointment.get('doctor_name')} has been {status}.",
             [
                 f"Date: {appointment.get('date')}",
-                f"Time: {appointment.get('time')}",
+                f"Time: {appointment.get('time') or 'TBD'}",
                 f"Issue: {appointment.get('issue_category')}"
             ],
             "View Appointments",
@@ -1197,6 +1267,29 @@ def update_appointment_status(appointment_id, action):
             "Thank you for using MediConnect."
         )
         _send_email(appointment.get("patient_email"), "Appointment Update", body, html_body)
+
+    if action == "accept" and appointment and _should_send_email(db, appointment.get("doctor_email"), "doctor"):
+        base_url = request.host_url.rstrip("/")
+        body = (
+            f"Hello Dr. {appointment.get('doctor_name')},\n\n"
+            "You confirmed an appointment.\n"
+            f"Patient: {appointment.get('patient_name')}\n"
+            f"Date: {appointment.get('date')}\nTime: {appointment.get('time')}\n\n"
+            "You can manage it in your dashboard."
+        )
+        html_body = _wrap_email_html(
+            "Appointment Confirmed",
+            "You confirmed an appointment.",
+            [
+                f"Patient: {appointment.get('patient_name')}",
+                f"Date: {appointment.get('date')}",
+                f"Time: {appointment.get('time')}"
+            ],
+            "Open Dashboard",
+            f"{base_url}{url_for('auth.doctor_dashboard')}",
+            "You can manage this appointment in your dashboard."
+        )
+        _send_email(appointment.get("doctor_email"), "Appointment Confirmed", body, html_body)
 
     flash("Appointment updated")
     return redirect(url_for('auth.doctor_dashboard'))
@@ -1722,17 +1815,20 @@ def admin_dashboard():
         return redirect(url_for('auth.admin_login'))
 
     from app import db
-    pending_doctors = list(db.users.find({
-        "role": "doctor",
-        "$or": [
-            {"status": "pending"},
-            {"status": {"$exists": False}},
-            {"status": ""}
-        ]
-    }))
+    pending_doctors = list(db.users.find(
+        {
+            "role": "doctor",
+            "$or": [
+                {"status": "pending"},
+                {"status": {"$exists": False}},
+                {"status": ""}
+            ]
+        },
+        {"doctor_proof.data": 0}
+    ))
     reports = list(db.reports.find({}).sort("created_at", -1).limit(50))
     audit_logs = list(db.audit_logs.find({}).sort("created_at", -1).limit(100))
-    users = list(db.users.find({}, {"password": 0}).sort("created_at", -1).limit(200))
+    users = list(db.users.find({}, {"password": 0, "doctor_proof.data": 0}).sort("created_at", -1).limit(200))
 
     return render_template(
         'admin_dashboard.html',
@@ -1874,6 +1970,125 @@ def admin_update_user_role(user_id):
     })
     flash("Role updated")
     return redirect(url_for('auth.admin_dashboard'))
+
+@auth_bp.route('/admin/doctor-proof/<doctor_id>')
+def admin_doctor_proof(doctor_id):
+    if 'admin' not in session:
+        flash("Please login as admin")
+        return redirect(url_for('auth.admin_login'))
+
+    from app import db
+    try:
+        doctor_object_id = ObjectId(doctor_id)
+    except Exception:
+        flash("Invalid doctor")
+        return redirect(url_for('auth.admin_dashboard'))
+
+    doctor = db.users.find_one({"_id": doctor_object_id, "role": "doctor"}, {"doctor_proof": 1, "name": 1})
+    proof = (doctor or {}).get("doctor_proof")
+    if not proof or not proof.get("data"):
+        flash("No proof document found")
+        return redirect(url_for('auth.admin_dashboard'))
+
+    file_data = base64.b64decode(proof.get("data"))
+    filename = proof.get("filename") or f"doctor_proof_{doctor_id}"
+    mime = proof.get("mime") or "application/octet-stream"
+    return send_file(BytesIO(file_data), mimetype=mime, as_attachment=True, download_name=filename)
+
+@auth_bp.route('/user/avatar')
+def user_avatar():
+    if 'user' not in session:
+        svg = (
+            "<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'>"
+            "<rect width='64' height='64' rx='32' fill='#E2E8F0'/>"
+            "<circle cx='32' cy='26' r='12' fill='#94A3B8'/>"
+            "<path d='M14 56c4-10 14-16 18-16s14 6 18 16' fill='#94A3B8'/>"
+            "</svg>"
+        )
+        return Response(svg, mimetype='image/svg+xml')
+
+    from app import db
+    user_doc = db.users.find_one(
+        {"email": session['user']['email'], "role": session['user']['role']},
+        {"avatar_data": 1, "avatar_mime": 1}
+    )
+    if not user_doc or not user_doc.get("avatar_data"):
+        svg = (
+            "<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'>"
+            "<rect width='64' height='64' rx='32' fill='#E2E8F0'/>"
+            "<circle cx='32' cy='26' r='12' fill='#94A3B8'/>"
+            "<path d='M14 56c4-10 14-16 18-16s14 6 18 16' fill='#94A3B8'/>"
+            "</svg>"
+        )
+        return Response(svg, mimetype='image/svg+xml')
+
+    file_data = base64.b64decode(user_doc.get("avatar_data"))
+    mime = user_doc.get("avatar_mime") or "image/jpeg"
+    return Response(file_data, mimetype=mime)
+
+@auth_bp.route('/account/delete', methods=['POST'])
+def account_delete():
+    if 'user' not in session:
+        flash("Please login to manage your account")
+        return redirect(url_for('home'))
+
+    from app import db
+    mode = request.form.get('mode')
+    now = datetime.utcnow()
+    delete_after = now + timedelta(days=30)
+    email = session['user']['email']
+    role = session['user']['role']
+
+    if mode == "now":
+        db.users.update_one(
+            {"email": email, "role": role},
+            {"$set": {"status": "deleted", "deleted_at": now, "updated_at": now}}
+        )
+        _log_audit(db, email, role, "account_deleted", {"mode": "now"})
+        _send_email(
+            email,
+            "MediConnect Account Deleted",
+            "Your account has been deleted as requested.",
+            _wrap_email_html(
+                "Account Deleted",
+                "Your MediConnect account has been deleted as requested.",
+                None,
+                None,
+                None,
+                "If this was not you, please contact support immediately."
+            )
+        )
+        session.pop('user', None)
+        flash("Your account has been deleted")
+        return redirect(url_for('home'))
+
+    if mode == "scheduled":
+        db.users.update_one(
+            {"email": email, "role": role},
+            {"$set": {
+                "status": "deletion_scheduled",
+                "delete_requested_at": now,
+                "delete_after": delete_after,
+                "updated_at": now
+            }}
+        )
+        _log_audit(db, email, role, "account_delete_scheduled", {"delete_after": delete_after.isoformat()})
+        _send_email(
+            email,
+            "MediConnect Account Deletion Scheduled",
+            "Your account is scheduled for deletion in 30 days.",
+            _wrap_email_html(
+                "Deletion Scheduled",
+                "Your MediConnect account is scheduled for deletion in 30 days.",
+                [f"Deletion date: {delete_after.date()}"]
+            )
+        )
+        session.pop('user', None)
+        flash("Your account will be deleted in 30 days")
+        return redirect(url_for('home'))
+
+    flash("Invalid deletion option")
+    return redirect(url_for('home'))
 
 # --- SOCKET.IO EVENTS ---
 def register_socketio_handlers(socketio):

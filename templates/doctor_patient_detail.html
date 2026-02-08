@@ -12,15 +12,15 @@
     <header class="dashboard-header doctor-header">
         <div class="container">
             <div class="header-content">
-                <div class="logo"><i class="fas fa-heartbeat"></i> MediConnect</div>
+                <a href="{{ url_for('auth.doctor_dashboard') }}" class="logo"><i class="fas fa-heartbeat"></i> MediConnect</a>
                 <div class="header-right">
-                    <div class="user-info">
-                        <i class="fas fa-user-md"></i>
+                    <a href="{{ url_for('auth.doctor_profile') }}" class="user-info user-info-link">
+                        <img src="{{ url_for('auth.user_avatar') }}" alt="Profile" class="user-avatar">
                         <div>
                             <strong>Dr. {{ user.name }}</strong>
                             <small>{{ user.specialization }}</small>
                         </div>
-                    </div>
+                    </a>
                     <a href="{{ url_for('auth.logout') }}" class="btn-logout">
                         <i class="fas fa-sign-out-alt"></i> Logout
                     </a>
@@ -121,7 +121,7 @@
                         {% for appt in appointments %}
                             <div class="appointment-card">
                                 <div class="appointment-info">
-                                    <h4>{{ appt.date }} at {{ appt.time }} <span class="status-badge status-{{ appt.status }}">{{ appt.status }}</span></h4>
+                                    <h4>{{ appt.date }}{% if appt.time %} at {{ appt.time }}{% else %} (time to be confirmed){% endif %} <span class="status-badge status-{{ appt.status }}">{{ appt.status }}</span></h4>
                                     {% if appt.issue_category %}<p><i class="fas fa-clipboard-list"></i> {{ appt.issue_category }}</p>{% endif %}
                                     {% if appt.issue_detail %}<p><i class="fas fa-notes-medical"></i> {{ appt.issue_detail }}</p>{% endif %}
                                     {% if appt.reason %}<p><i class="fas fa-notes-medical"></i> {{ appt.reason }}</p>{% endif %}

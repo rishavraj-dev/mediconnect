@@ -48,6 +48,12 @@
                                     <p><i class="fas fa-envelope"></i> {{ doctor.email }}</p>
                                     <p><i class="fas fa-id-card"></i> {{ doctor.license_id }}</p>
                                     <p><i class="fas fa-stethoscope"></i> {{ doctor.specialization }}</p>
+                                    {% if doctor.description %}
+                                        <p><i class="fas fa-align-left"></i> {{ doctor.description }}</p>
+                                    {% endif %}
+                                    {% if doctor.doctor_proof and doctor.doctor_proof.filename %}
+                                        <p><i class="fas fa-file"></i> <a href="{{ url_for('auth.admin_doctor_proof', doctor_id=doctor._id) }}" target="_blank">View Verification Document</a></p>
+                                    {% endif %}
                                 </div>
                                 <div class="appointment-actions">
                                     <form method="POST" action="{{ url_for('auth.admin_approve_doctor', doctor_id=doctor._id) }}">
@@ -120,6 +126,7 @@
                                 <th>Email</th>
                                 <th>Role</th>
                                 <th>Status</th>
+                                <th>Proof</th>
                                 <th>Update</th>
                             </tr>
                         </thead>
@@ -130,6 +137,13 @@
                                     <td>{{ user.email }}</td>
                                     <td>{{ user.role }}</td>
                                     <td>{{ user.status or 'active' }}</td>
+                                    <td>
+                                        {% if user.role == 'doctor' and user.doctor_proof and user.doctor_proof.filename %}
+                                            <a href="{{ url_for('auth.admin_doctor_proof', doctor_id=user._id) }}" target="_blank">View</a>
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
                                     <td>
                                         <form method="POST" action="{{ url_for('auth.admin_update_user_role', user_id=user._id) }}">
                                             <select name="role" required>

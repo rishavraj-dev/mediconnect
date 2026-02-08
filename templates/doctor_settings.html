@@ -12,15 +12,15 @@
     <header class="dashboard-header doctor-header">
         <div class="container">
             <div class="header-content">
-                <div class="logo"><i class="fas fa-heartbeat"></i> MediConnect</div>
+                <a href="{{ url_for('auth.doctor_dashboard') }}" class="logo"><i class="fas fa-heartbeat"></i> MediConnect</a>
                 <div class="header-right">
-                    <div class="user-info">
-                        <i class="fas fa-user-md"></i>
+                    <a href="{{ url_for('auth.doctor_profile') }}" class="user-info user-info-link">
+                        <img src="{{ url_for('auth.user_avatar') }}" alt="Profile" class="user-avatar">
                         <div>
                             <strong>Dr. {{ user.name }}</strong>
                             <small>{{ user.specialization }}</small>
                         </div>
-                    </div>
+                    </a>
                     <a href="{{ url_for('auth.logout') }}" class="btn-logout">
                         <i class="fas fa-sign-out-alt"></i> Logout
                     </a>
@@ -82,6 +82,27 @@
                         <i class="fas fa-save"></i> Save Settings
                     </button>
                 </form>
+            </div>
+
+            <div class="section-card danger-card">
+                <div class="section-header">
+                    <h2><i class="fas fa-exclamation-triangle"></i> Delete Account</h2>
+                </div>
+                <p class="muted-text">Choose immediate deletion or schedule deletion in 30 days. This action cannot be undone.</p>
+                <div class="danger-actions">
+                    <form method="POST" action="{{ url_for('auth.account_delete') }}">
+                        <input type="hidden" name="mode" value="now">
+                        <button class="btn-danger" type="submit">
+                            <i class="fas fa-trash"></i> Delete Now
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ url_for('auth.account_delete') }}">
+                        <input type="hidden" name="mode" value="scheduled">
+                        <button class="btn-secondary-action" type="submit">
+                            <i class="fas fa-clock"></i> Delete in 30 Days
+                        </button>
+                    </form>
+                </div>
             </div>
         </main>
     </div>
