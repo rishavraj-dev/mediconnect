@@ -99,6 +99,27 @@ nav {
     align-items: center;
 }
 
+.nav-toggle,
+.nav-close {
+    border: none;
+    background: transparent;
+    color: var(--dark);
+    font-size: 1.4rem;
+    cursor: pointer;
+    display: none;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+}
+
 .logo {
     font-size: 1.7rem;
     font-weight: 700;
@@ -144,6 +165,63 @@ nav {
     background: var(--accent-dark);
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
+}
+
+.mobile-menu-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.4);
+    opacity: 0;
+    pointer-events: none;
+    transition: var(--transition);
+    z-index: 999;
+}
+
+.mobile-menu-backdrop.open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.mobile-menu {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: min(320px, 85vw);
+    height: 100vh;
+    background: var(--white);
+    box-shadow: var(--shadow-lg);
+    transform: translateX(100%);
+    transition: var(--transition);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    z-index: 1000;
+}
+
+.mobile-menu.open {
+    transform: translateX(0);
+}
+
+.mobile-menu-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.mobile-menu a {
+    color: var(--dark);
+    text-decoration: none;
+    font-weight: 600;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.mobile-menu .btn-nav-primary {
+    display: inline-flex;
+    justify-content: center;
+    border-bottom: none;
 }
 
 /* ========================================
@@ -1122,8 +1200,14 @@ footer {
     }
 
     .nav-links {
-        gap: 20px;
-        font-size: 0.9rem;
+        display: none;
+    }
+
+    .nav-toggle,
+    .nav-close {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .hero h1 {
@@ -1206,10 +1290,7 @@ footer {
     }
 
     .nav-links {
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        gap: 15px;
-        padding-bottom: 10px;
+        display: none;
     }
 }
 

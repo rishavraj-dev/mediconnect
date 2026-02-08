@@ -61,6 +61,29 @@ def _get_availability_rules(db, doctor_email):
 def _parse_datetime(date_value, time_value):
     return datetime.strptime(f"{date_value} {time_value}", "%Y-%m-%d %H:%M")
 
+def _build_session_user(user_data):
+    session_user = {
+        'email': user_data.get('email'),
+        'name': user_data.get('name'),
+        'role': user_data.get('role')
+    }
+    if user_data.get('role') == 'patient':
+        session_user.update({
+            'phone': user_data.get('phone'),
+            'dob': user_data.get('dob'),
+            'gender': user_data.get('gender'),
+            'address': user_data.get('address')
+        })
+    if user_data.get('role') == 'doctor':
+        session_user.update({
+            'license_id': user_data.get('license_id'),
+            'specialization': user_data.get('specialization'),
+            'phone': user_data.get('phone'),
+            'clinic_address': user_data.get('clinic_address'),
+            'years_experience': user_data.get('years_experience')
+        })
+    return session_user
+
 # --- PATIENT ROUTE ---
 @auth_bp.route('/register/patient', methods=['GET', 'POST'])
 def register_patient():
@@ -83,7 +106,7 @@ def register_patient():
         otp = str(random.randint(100000, 999999))
 
         # Save to Session
-        session['temp_user'] = {
+        temp_user = {
             'role': 'patient',
             'name': name,
             'phone': phone,
@@ -91,7 +114,6 @@ def register_patient():
             'gender': gender,
             'address': address,
             'email': email,
-            'password': generate_password_hash(password),
             'status': 'active',
             'settings': {
                 'notify_email': DEFAULT_NOTIFY_EMAIL,
@@ -99,6 +121,11 @@ def register_patient():
             },
             'otp': otp
         }
+
+        if password:
+            temp_user['password'] = generate_password_hash(password)
+
+        session['temp_user'] = temp_user
 
         # Send Email via Brevo SMTP
         from app import mail
@@ -133,7 +160,7 @@ def register_doctor():
 
         otp = str(random.randint(100000, 999999))
 
-        session['temp_user'] = {
+        temp_user = {
             'role': 'doctor',
             'name': name,
             'license_id': license_id,
@@ -142,7 +169,6 @@ def register_doctor():
             'clinic_address': clinic_address,
             'years_experience': years_experience,
             'email': email,
-            'password': generate_password_hash(password),
             'status': 'pending',
             'settings': {
                 'notify_email': DEFAULT_NOTIFY_EMAIL,
@@ -150,6 +176,11 @@ def register_doctor():
             },
             'otp': otp
         }
+
+        if password:
+            temp_user['password'] = generate_password_hash(password)
+
+        session['temp_user'] = temp_user
 
         # Send Email via Brevo SMTP
         from app import mail
@@ -168,10 +199,31 @@ def register_doctor():
 def verify_otp():
     if request.method == 'POST':
         from app import db
-        if request.form.get('otp') == session.get('temp_user', {}).get('otp'):
-            # Save User to DB
+        otp_input = request.form.get('otp')
+        temp_login = session.get('temp_login')
+        if temp_login:
+            if otp_input == temp_login.get('otp'):
+                user = db.users.find_one({"email": temp_login.get('email'), "role": temp_login.get('role')})
+                if not user:
+                    flash("Account not found")
+                    session.pop('temp_login', None)
+                    return redirect(url_for('auth.login_patient'))
+                if user.get("role") == "doctor" and user.get("status") != "approved":
+                    flash("Your doctor account is pending approval")
+                    session.pop('temp_login', None)
+                    return redirect(url_for('auth.login_doctor'))
+                session['user'] = _build_session_user(user)
+                _log_audit(db, user.get("email"), user.get("role"), "login", {"method": "otp"})
+                session.pop('temp_login', None)
+                if user.get('role') == 'patient':
+                    return redirect(url_for('auth.patient_dashboard'))
+                return redirect(url_for('auth.doctor_dashboard'))
+            flash("Invalid OTP")
+            return render_template('verify_otp.html', mode='login')
+
+        if otp_input == session.get('temp_user', {}).get('otp'):
             user_data = session.pop('temp_user')
-            user_data.pop('otp')
+            user_data.pop('otp', None)
             if user_data.get("role") == "doctor" and not user_data.get("status"):
                 user_data["status"] = "pending"
             if user_data.get("role") == "patient" and not user_data.get("status"):
@@ -181,30 +233,37 @@ def verify_otp():
             _log_audit(db, user_data.get("email"), user_data.get("role"), "register", {
                 "status": user_data.get("status")
             })
-            
-            # Log the user in automatically
-            session['user'] = {
-                'email': user_data['email'],
-                'name': user_data['name'],
-                'role': user_data['role']
-            }
-            
-            # Redirect to appropriate dashboard
-            if user_data['role'] == 'patient':
+
+            session['user'] = _build_session_user(user_data)
+
+            if user_data.get('role') == 'patient':
                 return redirect(url_for('auth.patient_dashboard'))
-            else:
-                if user_data.get("status") != "approved":
-                    flash("Your doctor account is pending approval")
-                    return redirect(url_for('auth.login_doctor'))
-                return redirect(url_for('auth.doctor_dashboard'))
+            if user_data.get("status") != "approved":
+                flash("Your doctor account is pending approval")
+                return redirect(url_for('auth.login_doctor'))
+            return redirect(url_for('auth.doctor_dashboard'))
         else:
             flash("Invalid OTP")
-            
-    return render_template('verify_otp.html')
+
+    mode = 'login' if session.get('temp_login') else 'register'
+    return render_template('verify_otp.html', mode=mode)
 
 # --- RESEND OTP ---
 @auth_bp.route('/resend-otp', methods=['POST'])
 def resend_otp():
+    temp_login = session.get('temp_login')
+    if temp_login and temp_login.get('email'):
+        otp = str(random.randint(100000, 999999))
+        temp_login['otp'] = otp
+        session['temp_login'] = temp_login
+
+        subject = "MediConnect Login Code"
+        body = f"Hello,\n\nYour login code is: {otp}\n\nIf you did not request this, please ignore this email."
+        _send_email(temp_login.get('email'), subject, body)
+
+        flash("A new OTP has been sent to your email")
+        return redirect(url_for('auth.verify_otp'))
+
     temp_user = session.get('temp_user')
     if not temp_user or not temp_user.get('email'):
         flash("Please register first")
@@ -231,26 +290,28 @@ def resend_otp():
 def login_patient():
     if request.method == 'POST':
         from app import db
-        
-        email = request.form.get('email').lower()
-        password = request.form.get('password')
-        
+        email = request.form.get('email', '').lower().strip()
+        if not email:
+            flash("Please enter your email")
+            return redirect(url_for('auth.login_patient'))
+
         user = db.users.find_one({"email": email, "role": "patient"})
-        
-        if user and check_password_hash(user['password'], password):
-            session['user'] = {
-                'email': user['email'],
-                'name': user['name'],
-                'role': user['role'],
-                'phone': user.get('phone'),
-                'dob': user.get('dob'),
-                'gender': user.get('gender'),
-                'address': user.get('address')
-            }
-            _log_audit(db, user['email'], user['role'], "login", {})
-            return redirect(url_for('auth.patient_dashboard'))
-        else:
-            flash("Invalid email or password!")
+        if not user:
+            flash("No patient account found for this email")
+            return redirect(url_for('auth.login_patient'))
+
+        otp = str(random.randint(100000, 999999))
+        session['temp_login'] = {
+            'role': 'patient',
+            'email': email,
+            'otp': otp
+        }
+
+        subject = "MediConnect Login Code"
+        body = f"Hello {user.get('name')},\n\nYour login code is: {otp}\n\nIf you did not request this, please ignore this email."
+        _send_email(email, subject, body)
+
+        return redirect(url_for('auth.verify_otp'))
             
     return render_template('login_patient.html')
 
@@ -259,31 +320,33 @@ def login_patient():
 def login_doctor():
     if request.method == 'POST':
         from app import db
-        
-        email = request.form.get('email').lower()
-        password = request.form.get('password')
-        
+        email = request.form.get('email', '').lower().strip()
+        if not email:
+            flash("Please enter your email")
+            return redirect(url_for('auth.login_doctor'))
+
         user = db.users.find_one({"email": email, "role": "doctor"})
-        
-        if user and check_password_hash(user['password'], password):
-            status = user.get("status")
-            if status and status != "approved":
-                flash("Your doctor account is pending approval")
-                return redirect(url_for('auth.login_doctor'))
-            session['user'] = {
-                'email': user['email'],
-                'name': user['name'],
-                'role': user['role'],
-                'license_id': user.get('license_id'),
-                'specialization': user.get('specialization'),
-                'phone': user.get('phone'),
-                'clinic_address': user.get('clinic_address'),
-                'years_experience': user.get('years_experience')
-            }
-            _log_audit(db, user['email'], user['role'], "login", {})
-            return redirect(url_for('auth.doctor_dashboard'))
-        else:
-            flash("Invalid email or password!")
+        if not user:
+            flash("No doctor account found for this email")
+            return redirect(url_for('auth.login_doctor'))
+
+        status = user.get("status")
+        if status and status != "approved":
+            flash("Your doctor account is pending approval")
+            return redirect(url_for('auth.login_doctor'))
+
+        otp = str(random.randint(100000, 999999))
+        session['temp_login'] = {
+            'role': 'doctor',
+            'email': email,
+            'otp': otp
+        }
+
+        subject = "MediConnect Doctor Login Code"
+        body = f"Hello Dr. {user.get('name')},\n\nYour login code is: {otp}\n\nIf you did not request this, please ignore this email."
+        _send_email(email, subject, body)
+
+        return redirect(url_for('auth.verify_otp'))
             
     return render_template('login_doctor.html')
 

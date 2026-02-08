@@ -68,7 +68,7 @@
                     <p>Your care hub with appointments, reports, and visit notes.</p>
                 </div>
                 <a class="btn-primary-action" href="#schedule-appointment">
-                    <i class="fas fa-plus"></i> Book New Appointment
+                    <i class="fas fa-plus"></i> Book Appointment
                 </a>
             </div>
 
@@ -202,8 +202,8 @@
                 <div class="quick-actions-grid">
                     <a class="action-card" href="{{ url_for('auth.patient_dashboard') }}#schedule-appointment">
                         <i class="fas fa-calendar-plus"></i>
-                        <h3>Schedule Appointment</h3>
-                        <p>Book for a later time</p>
+                        <h3>Book Appointment</h3>
+                        <p>Choose a time that suits you</p>
                     </a>
                     <a class="action-card" href="{{ url_for('auth.patient_records') }}">
                         <i class="fas fa-file-upload"></i>
@@ -342,7 +342,7 @@
         </a>
         <a href="{{ url_for('auth.patient_appointments') }}" class="mobile-nav-item">
             <i class="fas fa-calendar-check"></i>
-            <span>Visits</span>
+            <span>Appointments</span>
         </a>
         <a href="{{ url_for('auth.patient_dashboard') }}#schedule-appointment" class="mobile-nav-item">
             <i class="fas fa-plus-circle"></i>

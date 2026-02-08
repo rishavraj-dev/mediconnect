@@ -41,6 +41,9 @@
                 <a href="{{ url_for('auth.patient_records') }}" class="nav-item">
                     <i class="fas fa-file-medical"></i> Medical Records
                 </a>
+                <a href="{{ url_for('auth.patient_timeline') }}" class="nav-item">
+                    <i class="fas fa-stream"></i> Timeline
+                </a>
                 <a href="{{ url_for('auth.patient_prescriptions') }}" class="nav-item">
                     <i class="fas fa-prescription"></i> Prescriptions
                 </a>
@@ -76,7 +79,7 @@
                                 </div>
                                 <div class="appointment-actions">
                                     <a class="btn-primary-action btn-compact" href="{{ url_for('auth.patient_dashboard') }}#schedule-appointment">
-                                        <i class="fas fa-calendar-plus"></i> Book
+                                        <i class="fas fa-calendar-plus"></i> Book Appointment
                                     </a>
                                 </div>
                             </div>
@@ -100,7 +103,7 @@
         </a>
         <a href="{{ url_for('auth.patient_appointments') }}" class="mobile-nav-item">
             <i class="fas fa-calendar-check"></i>
-            <span>Visits</span>
+            <span>Appointments</span>
         </a>
         <a href="{{ url_for('auth.patient_dashboard') }}#schedule-appointment" class="mobile-nav-item">
             <i class="fas fa-plus-circle"></i>

@@ -86,5 +86,27 @@
             </div>
         </main>
     </div>
+    <nav class="mobile-bottom-nav">
+        <a href="{{ url_for('auth.patient_dashboard') }}" class="mobile-nav-item">
+            <i class="fas fa-home"></i>
+            <span>Home</span>
+        </a>
+        <a href="{{ url_for('auth.patient_appointments') }}" class="mobile-nav-item">
+            <i class="fas fa-calendar-check"></i>
+            <span>Appointments</span>
+        </a>
+        <a href="{{ url_for('auth.patient_dashboard') }}#schedule-appointment" class="mobile-nav-item">
+            <i class="fas fa-plus-circle"></i>
+            <span>Book</span>
+        </a>
+        <a href="{{ url_for('auth.patient_records') }}" class="mobile-nav-item">
+            <i class="fas fa-file-medical"></i>
+            <span>Records</span>
+        </a>
+        <a href="{{ url_for('auth.patient_profile') }}" class="mobile-nav-item">
+            <i class="fas fa-user"></i>
+            <span>Profile</span>
+        </a>
+    </nav>
 </body>
 </html>
