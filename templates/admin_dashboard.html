@@ -170,6 +170,53 @@
 
             <div class="section-card">
                 <div class="section-header">
+                    <h2><i class="fas fa-sitemap"></i> Departments</h2>
+                </div>
+                <form class="appointment-form" method="POST" action="{{ url_for('auth.admin_add_department') }}">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="department_name">Department name</label>
+                            <input type="text" id="department_name" name="department_name" placeholder="e.g., Cardiology" required>
+                        </div>
+                    </div>
+                    <button class="btn-primary-action" type="submit">
+                        <i class="fas fa-plus"></i> Add Department
+                    </button>
+                </form>
+
+                {% if departments %}
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Department</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for dept in departments %}
+                                <tr>
+                                    <td>{{ dept.name }}</td>
+                                    <td>
+                                        <form method="POST" action="{{ url_for('auth.admin_delete_department', department_id=dept.id) }}">
+                                            <button class="btn-danger" type="submit">
+                                                <i class="fas fa-trash"></i> Remove
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <div class="empty-state small">
+                        <i class="fas fa-sitemap"></i>
+                        <p>No departments configured</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="section-card">
+                <div class="section-header">
                     <h2><i class="fas fa-clipboard-list"></i> Audit Logs</h2>
                 </div>
                 {% if audit_logs %}

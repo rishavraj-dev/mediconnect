@@ -136,31 +136,6 @@
                 </div>
             </div>
 
-            <div class="section-card">
-                <div class="section-header">
-                    <h2><i class="fas fa-calendar"></i> Availability Calendar</h2>
-                </div>
-                {% if availability_slots %}
-                    <div class="appointment-list">
-                        {% for slot in availability_slots %}
-                            <div class="appointment-card">
-                                <div class="appointment-info">
-                                    <h4>Dr. {{ slot.doctor_name or 'Doctor' }}</h4>
-                                    {% if slot.doctor_specialization %}<p><i class="fas fa-stethoscope"></i> {{ slot.doctor_specialization }}</p>{% endif %}
-                                    <p><i class="fas fa-calendar"></i> {{ slot.date }}</p>
-                                    <p><i class="fas fa-clock"></i> {{ slot.start_time }} - {{ slot.end_time }}</p>
-                                </div>
-                            </div>
-                        {% endfor %}
-                    </div>
-                {% else %}
-                    <div class="empty-state small">
-                        <i class="fas fa-calendar"></i>
-                        <p>No availability published yet</p>
-                    </div>
-                {% endif %}
-            </div>
-
             <!-- Upcoming Appointments -->
             <div class="section-card" id="my-appointments">
                 <div class="section-header">

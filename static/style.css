@@ -1997,6 +1997,47 @@ footer {
     gap: 20px;
 }
 
+.booking-type-toggle {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.radio-pill {
+    position: relative;
+    cursor: pointer;
+}
+
+.radio-pill input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.radio-pill span {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--light-gray);
+    font-weight: 600;
+    color: var(--dark);
+    transition: var(--transition);
+}
+
+.radio-pill:has(input:checked) span {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--white);
+    box-shadow: var(--shadow-sm);
+}
+
+.booking-section {
+    display: block;
+}
+
 .form-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -2067,6 +2108,46 @@ footer {
     justify-content: space-between;
     gap: 20px;
     box-shadow: var(--shadow-sm);
+}
+
+.appointment-card-collapsible {
+    flex-wrap: wrap;
+    align-items: flex-start;
+}
+
+.appointment-details {
+    width: 100%;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--border);
+}
+
+.appointment-details summary {
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    color: var(--primary-dark);
+    list-style: none;
+}
+
+.appointment-details summary::-webkit-details-marker {
+    display: none;
+}
+
+.appointment-details summary i {
+    transition: transform 0.2s ease;
+}
+
+.appointment-details[open] summary i {
+    transform: rotate(180deg);
+}
+
+.appointment-detail-body {
+    margin-top: 14px;
+    display: grid;
+    gap: 10px;
 }
 
 .appointment-info h4 {

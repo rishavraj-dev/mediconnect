@@ -67,6 +67,74 @@ def _log_audit(db, actor_email, role, action, metadata=None):
 def _get_availability_rules(db, doctor_email):
     return db.availability_rules.find_one({"doctor_email": doctor_email}) or {}
 
+def _normalize_department_name(name):
+    return " ".join((name or "").split()).strip()
+
+def _get_doctor_available_dates(db, doctor_email, days_ahead=60):
+    rules = _get_availability_rules(db, doctor_email)
+    allow_weekends = rules.get("allow_weekends", True) if rules else True
+    min_notice_hours = int((rules or {}).get("min_notice_hours") or 0)
+    max_daily = int((rules or {}).get("max_daily_appointments") or 0)
+    if max_daily <= 0:
+        max_daily = 50
+
+    now = datetime.utcnow()
+    start_date = now.date()
+    if min_notice_hours:
+        start_date = (now + timedelta(hours=min_notice_hours)).date()
+    end_date = start_date + timedelta(days=max(days_ahead - 1, 0))
+
+    slot_cursor = db.availability.find(
+        {
+            "doctor_email": doctor_email,
+            "date": {"$gte": start_date.isoformat(), "$lte": end_date.isoformat()}
+        },
+        {"date": 1}
+    )
+    slot_dates = {slot.get("date") for slot in slot_cursor if slot.get("date")}
+
+    if slot_dates:
+        candidate_dates = sorted(slot_dates)
+    else:
+        candidate_dates = [
+            (start_date + timedelta(days=offset)).isoformat()
+            for offset in range(days_ahead)
+        ]
+
+    if not allow_weekends:
+        filtered_dates = []
+        for date_str in candidate_dates:
+            try:
+                day = datetime.strptime(date_str, "%Y-%m-%d").date()
+            except Exception:
+                continue
+            if day.weekday() in [5, 6]:
+                continue
+            filtered_dates.append(date_str)
+        candidate_dates = filtered_dates
+
+    if not candidate_dates:
+        return []
+
+    counts = {}
+    appts = db.appointments.find(
+        {
+            "doctor_email": doctor_email,
+            "date": {"$in": candidate_dates},
+            "status": {"$nin": ["cancelled", "rejected"]}
+        },
+        {"date": 1}
+    )
+    for appt in appts:
+        date_key = appt.get("date")
+        if date_key:
+            counts[date_key] = counts.get(date_key, 0) + 1
+
+    return [date_str for date_str in candidate_dates if counts.get(date_str, 0) < max_daily]
+
+def _is_doctor_available_on_date(db, doctor_email, date_value, days_ahead=60):
+    return date_value in _get_doctor_available_dates(db, doctor_email, days_ahead)
+
 def _parse_datetime(date_value, time_value):
     return datetime.strptime(f"{date_value} {time_value}", "%Y-%m-%d %H:%M")
 
@@ -508,21 +576,6 @@ def patient_dashboard():
         {"patient_email": session['user']['email']}
     ).sort("created_at", -1))
 
-    today_str = date.today().isoformat()
-    availability_slots = list(db.availability.find(
-        {"date": {"$gte": today_str}}
-    ).sort([("date", 1), ("start_time", 1)]).limit(100))
-    doctor_emails = list({slot.get("doctor_email") for slot in availability_slots if slot.get("doctor_email")})
-    doctor_map = {}
-    if doctor_emails:
-        doctors_cursor = db.users.find({"email": {"$in": doctor_emails}, "role": "doctor"}, {"password": 0})
-        doctor_map = {doc.get("email"): doc for doc in doctors_cursor}
-    for slot in availability_slots:
-        slot["id"] = str(slot.get("_id"))
-        doc = doctor_map.get(slot.get("doctor_email"), {})
-        slot["doctor_name"] = doc.get("name")
-        slot["doctor_specialization"] = doc.get("specialization")
-
     now = datetime.now()
 
     for appt in appointments:
@@ -548,7 +601,6 @@ def patient_dashboard():
         user=session['user'],
         doctors=doctors,
         appointments=appointments,
-        availability_slots=availability_slots,
         upcoming_count=upcoming_count,
         completed_count=completed_count
     )
@@ -642,7 +694,24 @@ def book_appointment():
 
     from app import db
     doctors = list(db.users.find({"role": "doctor", "status": "approved"}, {"password": 0}).sort("name", 1))
-    return render_template('book_appointment.html', user=session['user'], doctors=doctors)
+    departments = list(db.departments.find({}).sort("name", 1))
+    for dept in departments:
+        dept["id"] = str(dept.get("_id"))
+
+    doctor_availability = {}
+    for doctor in doctors:
+        email = doctor.get("email")
+        if not email:
+            continue
+        doctor_availability[email] = _get_doctor_available_dates(db, email, 60)
+
+    return render_template(
+        'book_appointment.html',
+        user=session['user'],
+        doctors=doctors,
+        departments=departments,
+        doctor_availability=doctor_availability
+    )
 
 @auth_bp.route('/patient/profile', methods=['GET', 'POST'])
 def patient_profile():
@@ -1055,25 +1124,34 @@ def create_appointment():
 
     from app import db
 
+    booking_type = request.form.get('booking_type', 'new')
     doctor_email = request.form.get('doctor_email')
     date_value = request.form.get('date')
     time_value = request.form.get('time')
     reason = request.form.get('reason')
     issue_category = request.form.get('issue_category')
     issue_detail = request.form.get('issue_detail')
-    general_physician = request.form.get('general_physician') == "on"
+    general_physician = booking_type == "new"
     symptoms = request.form.get('symptoms')
     allergies = request.form.get('allergies')
     medications = request.form.get('medications')
     conditions = request.form.get('conditions')
     vitals = request.form.get('vitals')
 
-    if not date_value or not issue_category:
-        flash("Please select an issue and date")
+    if booking_type not in ["new", "followup"]:
+        flash("Please select a booking type")
+        return redirect(url_for('auth.book_appointment'))
+
+    if not date_value:
+        flash("Please select a date")
         return redirect(url_for('auth.book_appointment'))
 
     doctor = None
-    if general_physician:
+    if booking_type == "new":
+        if not issue_category:
+            flash("Please select a department")
+            return redirect(url_for('auth.book_appointment'))
+
         general_pool = list(db.users.find({
             "role": "doctor",
             "status": "approved",
@@ -1081,45 +1159,42 @@ def create_appointment():
         }))
         if not general_pool:
             general_pool = list(db.users.find({"role": "doctor", "status": "approved"}))
-        if general_pool:
-            doctor = random.choice(general_pool)
-    elif doctor_email:
-        doctor = db.users.find_one({"email": doctor_email, "role": "doctor", "status": "approved"})
+
+        available_pool = []
+        for candidate in general_pool:
+            candidate_email = candidate.get("email")
+            if not candidate_email:
+                continue
+            if db.blocks.find_one({"doctor_email": candidate_email, "patient_email": session['user']['email']}):
+                continue
+            if _is_doctor_available_on_date(db, candidate_email, date_value, 60):
+                available_pool.append(candidate)
+
+        if available_pool:
+            doctor = random.choice(available_pool)
+        else:
+            flash("No doctors available on the selected date")
+            return redirect(url_for('auth.book_appointment'))
     else:
-        flash("Please select a doctor or choose General Physician")
-        return redirect(url_for('auth.book_appointment'))
-
-    if not doctor:
-        flash("No doctor available right now")
-        return redirect(url_for('auth.book_appointment'))
-
-    if db.blocks.find_one({"doctor_email": doctor.get('email'), "patient_email": session['user']['email']}):
-        flash("This doctor is not available for appointments")
-        return redirect(url_for('auth.book_appointment'))
-
-    rules = _get_availability_rules(db, doctor.get('email'))
-    if rules:
-        allow_weekends = rules.get("allow_weekends", True)
-        max_daily = int(rules.get("max_daily_appointments") or 0)
-
-        try:
-            appointment_date = datetime.strptime(date_value, "%Y-%m-%d")
-        except Exception:
-            appointment_date = None
-
-        if appointment_date and not allow_weekends and appointment_date.weekday() in [5, 6]:
-            flash("This doctor is not available on weekends")
+        if not doctor_email:
+            flash("Please select a doctor for a follow-up")
             return redirect(url_for('auth.book_appointment'))
 
-        if max_daily:
-            daily_count = db.appointments.count_documents({
-                "doctor_email": doctor.get('email'),
-                "date": date_value,
-                "status": {"$nin": ["cancelled", "rejected"]}
-            })
-            if daily_count >= max_daily:
-                flash("This doctor has reached the daily limit")
-                return redirect(url_for('auth.book_appointment'))
+        doctor = db.users.find_one({"email": doctor_email, "role": "doctor", "status": "approved"})
+        if not doctor:
+            flash("Doctor not found")
+            return redirect(url_for('auth.book_appointment'))
+
+        if db.blocks.find_one({"doctor_email": doctor.get('email'), "patient_email": session['user']['email']}):
+            flash("This doctor is not available for appointments")
+            return redirect(url_for('auth.book_appointment'))
+
+        if not _is_doctor_available_on_date(db, doctor.get('email'), date_value, 60):
+            flash("This doctor is not available on the selected date")
+            return redirect(url_for('auth.book_appointment'))
+
+        if not issue_category:
+            issue_category = "Follow-up"
 
     appointment = {
         "patient_email": session['user']['email'],
@@ -1132,6 +1207,7 @@ def create_appointment():
         "reason": reason or "",
         "issue_category": issue_category,
         "issue_detail": issue_detail or "",
+        "booking_type": booking_type,
         "general_physician": general_physician,
         "intake": {
             "symptoms": symptoms or "",
@@ -1839,6 +1915,9 @@ def admin_dashboard():
     reports = list(db.reports.find({}).sort("created_at", -1).limit(50))
     audit_logs = list(db.audit_logs.find({}).sort("created_at", -1).limit(100))
     users = list(db.users.find({}, {"password": 0, "doctor_proof.data": 0}).sort("created_at", -1).limit(200))
+    departments = list(db.departments.find({}).sort("name", 1))
+    for dept in departments:
+        dept["id"] = str(dept.get("_id"))
 
     return render_template(
         'admin_dashboard.html',
@@ -1846,8 +1925,51 @@ def admin_dashboard():
         pending_doctors=pending_doctors,
         reports=reports,
         audit_logs=audit_logs,
-        users=users
+        users=users,
+        departments=departments
     )
+
+@auth_bp.route('/admin/departments/add', methods=['POST'])
+def admin_add_department():
+    if 'admin' not in session:
+        flash("Please login as admin")
+        return redirect(url_for('auth.admin_login'))
+
+    from app import db
+    name = _normalize_department_name(request.form.get('department_name'))
+    if not name:
+        flash("Department name is required")
+        return redirect(url_for('auth.admin_dashboard'))
+
+    name_lower = name.lower()
+    if db.departments.find_one({"name_lower": name_lower}):
+        flash("Department already exists")
+        return redirect(url_for('auth.admin_dashboard'))
+
+    db.departments.insert_one({
+        "name": name,
+        "name_lower": name_lower,
+        "created_at": datetime.utcnow()
+    })
+    flash("Department added")
+    return redirect(url_for('auth.admin_dashboard'))
+
+@auth_bp.route('/admin/departments/<department_id>/delete', methods=['POST'])
+def admin_delete_department(department_id):
+    if 'admin' not in session:
+        flash("Please login as admin")
+        return redirect(url_for('auth.admin_login'))
+
+    from app import db
+    try:
+        dept_object_id = ObjectId(department_id)
+    except Exception:
+        flash("Invalid department")
+        return redirect(url_for('auth.admin_dashboard'))
+
+    db.departments.delete_one({"_id": dept_object_id})
+    flash("Department removed")
+    return redirect(url_for('auth.admin_dashboard'))
 
 @auth_bp.route('/admin/doctors/<doctor_id>/approve', methods=['POST'])
 def admin_approve_doctor(doctor_id):

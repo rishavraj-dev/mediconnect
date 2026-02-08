@@ -60,7 +60,7 @@
             <div class="page-hero">
                 <div>
                     <h1>Book an Appointment</h1>
-                    <p>Choose a day and share your details. Your doctor will confirm the time.</p>
+                    <p>Choose new or follow-up, then select the date that works for you.</p>
                 </div>
                 <a class="btn-secondary-action" href="{{ url_for('auth.patient_dashboard') }}">
                     <i class="fas fa-arrow-left"></i> Back to Dashboard
@@ -70,74 +70,98 @@
             <div class="section-card">
                 <h2><i class="fas fa-calendar-plus"></i> Appointment Details</h2>
                 <form class="appointment-form" method="POST" action="{{ url_for('auth.create_appointment') }}" enctype="multipart/form-data">
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="issue_category">Issue Category</label>
-                            <select id="issue_category" name="issue_category" required>
-                                <option value="" disabled selected>Select an issue</option>
-                                <option value="General Checkup">General Checkup</option>
-                                <option value="Cold & Flu">Cold & Flu</option>
-                                <option value="Skin / Dermatology">Skin / Dermatology</option>
-                                <option value="Cardiology">Cardiology</option>
-                                <option value="Orthopedic">Orthopedic</option>
-                                <option value="Dental">Dental</option>
-                                <option value="Mental Health">Mental Health</option>
-                                <option value="Pediatrics">Pediatrics</option>
-                                <option value="Women's Health">Women's Health</option>
-                                <option value="Other">Other</option>
-                            </select>
+                    <div class="booking-type-toggle">
+                        <label class="radio-pill">
+                            <input type="radio" name="booking_type" value="new" checked>
+                            <span><i class="fas fa-user-plus"></i> New</span>
+                        </label>
+                        <label class="radio-pill">
+                            <input type="radio" name="booking_type" value="followup">
+                            <span><i class="fas fa-rotate-right"></i> Follow-up</span>
+                        </label>
+                    </div>
+
+                    <div class="booking-section" data-booking="new">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="issue_category">Department</label>
+                                <select id="issue_category" name="issue_category" required>
+                                    <option value="" disabled selected>Select a department</option>
+                                    {% if departments %}
+                                        {% for dept in departments %}
+                                            <option value="{{ dept.name }}">{{ dept.name }}</option>
+                                        {% endfor %}
+                                    {% else %}
+                                        <option value="General">General</option>
+                                    {% endif %}
+                                </select>
+                                {% if not departments %}
+                                    <small>No departments configured yet. Using General for now.</small>
+                                {% endif %}
+                            </div>
+                            <div class="form-group">
+                                <label for="new_date">Preferred Date</label>
+                                <input type="date" id="new_date" name="date" required>
+                                <small>The doctor will confirm the time after approval</small>
+                            </div>
+                            <div class="form-group full-width">
+                                <label for="issue_detail">Describe Your Issue (optional)</label>
+                                <textarea id="issue_detail" name="issue_detail" rows="3" placeholder="Share symptoms or concerns"></textarea>
+                            </div>
+                            <div class="form-group full-width">
+                                <label for="symptoms">Symptoms (optional)</label>
+                                <textarea id="symptoms" name="symptoms" rows="2" placeholder="Key symptoms"></textarea>
+                            </div>
+                            <div class="form-group full-width">
+                                <label for="allergies">Allergies (optional)</label>
+                                <input type="text" id="allergies" name="allergies" placeholder="e.g., Penicillin">
+                            </div>
+                            <div class="form-group full-width">
+                                <label for="medications">Current Medications (optional)</label>
+                                <input type="text" id="medications" name="medications" placeholder="e.g., Metformin 500mg">
+                            </div>
+                            <div class="form-group full-width">
+                                <label for="conditions">Existing Conditions (optional)</label>
+                                <input type="text" id="conditions" name="conditions" placeholder="e.g., Diabetes, Hypertension">
+                            </div>
+                            <div class="form-group full-width">
+                                <label for="vitals">Vitals (optional)</label>
+                                <input type="text" id="vitals" name="vitals" placeholder="e.g., BP 120/80, Temp 98.6F">
+                            </div>
+                            <div class="form-group full-width">
+                                <label for="reason">Reason (optional)</label>
+                                <textarea id="reason" name="reason" rows="3" placeholder="Briefly describe your concern"></textarea>
+                            </div>
+                            <div class="form-group full-width">
+                                <label for="reports">Upload Reports (optional)</label>
+                                <input type="file" id="reports" name="reports" multiple accept=".pdf,.png,.jpg,.jpeg,.doc,.docx">
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label for="doctor_email">Select Doctor (optional)</label>
-                            <select id="doctor_email" name="doctor_email">
-                                <option value="" disabled selected>Choose a doctor</option>
-                                {% for doctor in doctors %}
-                                    <option value="{{ doctor.email }}">Dr. {{ doctor.name }} - {{ doctor.specialization }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="date">Preferred Date</label>
-                            <input type="date" id="date" name="date" required>
-                            <small>The doctor will confirm the time after approval</small>
-                        </div>
-                        <div class="form-group full-width">
-                            <label class="checkbox-row">
-                                <input type="checkbox" name="general_physician">
-                                Not sure? Choose a General Physician and we will assign one for you.
-                            </label>
-                        </div>
-                        <div class="form-group full-width">
-                            <label for="issue_detail">Describe Your Issue (optional)</label>
-                            <textarea id="issue_detail" name="issue_detail" rows="3" placeholder="Share symptoms or concerns"></textarea>
-                        </div>
-                        <div class="form-group full-width">
-                            <label for="symptoms">Symptoms (optional)</label>
-                            <textarea id="symptoms" name="symptoms" rows="2" placeholder="Key symptoms"></textarea>
-                        </div>
-                        <div class="form-group full-width">
-                            <label for="allergies">Allergies (optional)</label>
-                            <input type="text" id="allergies" name="allergies" placeholder="e.g., Penicillin">
-                        </div>
-                        <div class="form-group full-width">
-                            <label for="medications">Current Medications (optional)</label>
-                            <input type="text" id="medications" name="medications" placeholder="e.g., Metformin 500mg">
-                        </div>
-                        <div class="form-group full-width">
-                            <label for="conditions">Existing Conditions (optional)</label>
-                            <input type="text" id="conditions" name="conditions" placeholder="e.g., Diabetes, Hypertension">
-                        </div>
-                        <div class="form-group full-width">
-                            <label for="vitals">Vitals (optional)</label>
-                            <input type="text" id="vitals" name="vitals" placeholder="e.g., BP 120/80, Temp 98.6F">
-                        </div>
-                        <div class="form-group full-width">
-                            <label for="reason">Reason (optional)</label>
-                            <textarea id="reason" name="reason" rows="3" placeholder="Briefly describe your concern"></textarea>
-                        </div>
-                        <div class="form-group full-width">
-                            <label for="reports">Upload Reports (optional)</label>
-                            <input type="file" id="reports" name="reports" multiple accept=".pdf,.png,.jpg,.jpeg,.doc,.docx">
+                    </div>
+
+                    <div class="booking-section" data-booking="followup" style="display:none;">
+                        <input type="hidden" name="issue_category" value="Follow-up">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="followup_doctor">Select Doctor</label>
+                                <select id="followup_doctor" name="doctor_email" required>
+                                    <option value="" disabled selected>Choose a doctor</option>
+                                    {% for doctor in doctors %}
+                                        <option value="{{ doctor.email }}">Dr. {{ doctor.name }} - {{ doctor.specialization }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="followup_date">Available Dates</label>
+                                <select id="followup_date" name="date" required>
+                                    <option value="" disabled selected>Select a doctor first</option>
+                                </select>
+                                <small>Showing availability for the next 60 days (max 50 patients/day).</small>
+                            </div>
+                            <div class="form-group full-width">
+                                <label for="followup_note">Follow-up Note (optional)</label>
+                                <textarea id="followup_note" name="issue_detail" rows="3" placeholder="Add a short note for the doctor"></textarea>
+                            </div>
                         </div>
                     </div>
                     <button class="btn-primary-action" type="submit">
@@ -174,5 +198,77 @@
             <span>Profile</span>
         </a>
     </nav>
+    <script>
+        const availabilityMap = {{ doctor_availability | tojson }};
+        const bookingRadios = document.querySelectorAll('input[name="booking_type"]');
+        const sections = document.querySelectorAll('.booking-section');
+        const followupDoctor = document.getElementById('followup_doctor');
+        const followupDate = document.getElementById('followup_date');
+
+        const updateFollowupDates = () => {
+            const email = followupDoctor.value;
+            const dates = availabilityMap[email] || [];
+            followupDate.innerHTML = '';
+
+            if (!email) {
+                const option = document.createElement('option');
+                option.textContent = 'Select a doctor first';
+                option.disabled = true;
+                option.selected = true;
+                followupDate.appendChild(option);
+                return;
+            }
+
+            if (!dates.length) {
+                const option = document.createElement('option');
+                option.textContent = 'No available dates';
+                option.disabled = true;
+                option.selected = true;
+                followupDate.appendChild(option);
+                return;
+            }
+
+            const placeholder = document.createElement('option');
+            placeholder.textContent = 'Select a date';
+            placeholder.disabled = true;
+            placeholder.selected = true;
+            followupDate.appendChild(placeholder);
+
+            dates.forEach((dateValue) => {
+                const option = document.createElement('option');
+                option.value = dateValue;
+                option.textContent = dateValue;
+                followupDate.appendChild(option);
+            });
+        };
+
+        const toggleSections = () => {
+            const selected = document.querySelector('input[name="booking_type"]:checked').value;
+            sections.forEach((section) => {
+                const active = section.dataset.booking === selected;
+                section.style.display = active ? 'block' : 'none';
+                section.querySelectorAll('input, select, textarea').forEach((field) => {
+                    if (field.name === 'booking_type') {
+                        return;
+                    }
+                    field.disabled = !active;
+                });
+            });
+
+            if (selected === 'followup') {
+                updateFollowupDates();
+            }
+        };
+
+        bookingRadios.forEach((radio) => {
+            radio.addEventListener('change', toggleSections);
+        });
+
+        if (followupDoctor) {
+            followupDoctor.addEventListener('change', updateFollowupDates);
+        }
+
+        toggleSections();
+    </script>
 </body>
 </html>
