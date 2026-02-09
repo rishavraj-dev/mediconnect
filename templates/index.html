@@ -210,7 +210,7 @@
     <section class="cta-section">
         <div class="container">
             <h2>Ready to Experience Modern Care?</h2>
-            <p>Join thousands of patients and clinicians who rely on MediConnect every day.</p>
+            <p>Join patients and clinicians using MediConnect to stay connected across the care journey.</p>
             <a href="{{ url_for('auth.register_patient') }}" class="btn-cta">Create Your Account <i class="fas fa-arrow-right"></i></a>
         </div>
     </section>
@@ -249,11 +249,11 @@
             <div class="footer-section">
                 <h4>Company</h4>
                 <ul>
-                    <li><a href="#how-it-works">About Us</a></li>
+                    <li><a href="{{ url_for('about') }}">About Us</a></li>
                     <li><a href="{{ url_for('auth.admin_login') }}">Admin Login</a></li>
-                    <li><a href="mailto:privacy@mediconnect.app">Privacy Policy</a></li>
-                    <li><a href="mailto:legal@mediconnect.app">Terms of Service</a></li>
-                    <li><a href="mailto:hello@mediconnect.app">Contact</a></li>
+                    <li><a href="{{ url_for('privacy') }}">Privacy Policy</a></li>
+                    <li><a href="{{ url_for('terms') }}">Terms of Service</a></li>
+                    <li><a href="{{ url_for('contact') }}">Contact</a></li>
                 </ul>
             </div>
         </div>

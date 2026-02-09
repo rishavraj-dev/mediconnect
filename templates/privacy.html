@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy | MediConnect</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="dashboard-page">
+    <header class="dashboard-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo"><i class="fas fa-heartbeat"></i> MediConnect</div>
+                <div class="header-right">
+                    <div class="user-info">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>Privacy Policy</span>
+                    </div>
+                    <a href="{{ url_for('home') }}" class="btn-logout">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="dashboard-container no-sidebar">
+        <main class="dashboard-main">
+            <div class="section-card">
+                <div class="section-header">
+                    <h2><i class="fas fa-user-shield"></i> How We Handle Data</h2>
+                </div>
+                <p>This hackathon draft summarizes how we intend to protect patient and clinician information.</p>
+                <p class="muted-text">A full policy will be published before production use.</p>
+            </div>
+
+            <div class="section-card">
+                <h2><i class="fas fa-database"></i> Information We Collect</h2>
+                <ul>
+                    <li>Account details such as name, email, and phone</li>
+                    <li>Profile information required for care delivery</li>
+                    <li>Appointment notes, prescriptions, and uploaded reports</li>
+                    <li>Basic usage analytics for product improvement</li>
+                </ul>
+            </div>
+
+            <div class="section-card">
+                <h2><i class="fas fa-lock"></i> How We Use It</h2>
+                <ul>
+                    <li>Deliver consultations, prescriptions, and follow-ups</li>
+                    <li>Secure accounts, prevent fraud, and meet compliance needs</li>
+                    <li>Improve the experience with aggregated insights</li>
+                </ul>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

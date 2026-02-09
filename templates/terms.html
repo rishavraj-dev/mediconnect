@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terms of Service | MediConnect</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="dashboard-page">
+    <header class="dashboard-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo"><i class="fas fa-heartbeat"></i> MediConnect</div>
+                <div class="header-right">
+                    <div class="user-info">
+                        <i class="fas fa-file-contract"></i>
+                        <span>Terms of Service</span>
+                    </div>
+                    <a href="{{ url_for('home') }}" class="btn-logout">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="dashboard-container no-sidebar">
+        <main class="dashboard-main">
+            <div class="section-card">
+                <div class="section-header">
+                    <h2><i class="fas fa-scale-balanced"></i> Key Terms</h2>
+                </div>
+                <p>This is a hackathon placeholder. It outlines the core rules for using MediConnect.</p>
+                <p class="muted-text">A complete legal document will be added before launch.</p>
+            </div>
+
+            <div class="section-card">
+                <h2><i class="fas fa-user-check"></i> User Responsibilities</h2>
+                <ul>
+                    <li>Provide accurate profile and medical information</li>
+                    <li>Use the platform respectfully and lawfully</li>
+                    <li>Protect your login credentials and device access</li>
+                </ul>
+            </div>
+
+            <div class="section-card">
+                <h2><i class="fas fa-triangle-exclamation"></i> Limitations</h2>
+                <ul>
+                    <li>Not a substitute for emergency care</li>
+                    <li>Availability depends on clinician schedules</li>
+                    <li>Features may change during pilot phases</li>
+                </ul>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
