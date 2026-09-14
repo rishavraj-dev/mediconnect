@@ -1,187 +1,266 @@
-MediConnect
-===========
+# MediConnect
 
-Overview
---------
-MediConnect is a telemedicine platform that connects patients with verified doctors for appointments, consultations, medical records, and follow-ups. The app uses email-based OTP (one-time password) verification for patient and doctor registration and login, with no passwords required for those roles.
+MediConnect is a telemedicine platform that connects patients with verified doctors for appointments, consultations, medical records, prescriptions, and follow-ups.
 
-Key Features
-------------
+## Contents
+
+- [Features](#features)
+- [Technology Stack](#technology-stack)
+- [Project Structure](#project-structure)
+- [Prerequisites](#prerequisites)
+- [Configuration](#configuration)
+- [Installation and Local Development](#installation-and-local-development)
+- [Authentication](#authentication)
+- [Application Routes](#application-routes)
+- [User Workflows](#user-workflows)
+- [Data and File Storage](#data-and-file-storage)
+- [Testing and Verification](#testing-and-verification)
+- [Deployment Notes](#deployment-notes)
+- [Troubleshooting](#troubleshooting)
+- [Security Checklist](#security-checklist)
+
+## Features
+
 - Patient and doctor dashboards for appointments, records, and actions.
 - Email OTP registration and login for patients and doctors.
-- Doctor approval workflow via the admin dashboard.
-- Appointment scheduling with intake notes and document uploads.
-- Chat and video consultation links for active visits.
-- Prescriptions and follow-up tracking.
-- Profile photo uploads for patients and doctors.
-- Doctor verification document uploads during registration.
-- Account deletion options: immediate or scheduled in 30 days.
-- Mobile-first navigation with a consistent bottom bar on dashboards.
-- Landing page hamburger menu on mobile screens.
+- Admin approval workflow for doctor registrations.
+- Appointment requests with issue categories, intake details, dates, and report uploads.
+- Doctor availability management and appointment time confirmation.
+- Real-time appointment chat and video consultation links.
+- Consultation notes, prescriptions, reviews, and follow-up requests.
+- Patient and doctor profiles, profile photos, preferences, and account deletion.
+- Doctor verification document uploads.
+- Mobile dashboard navigation and a responsive landing-page menu.
+- Plain-text and HTML email notifications for important account and appointment events.
 
-Tech Stack
-----------
-- Backend: Flask, Flask-SocketIO, Flask-Mail
-- Database: MongoDB
-- Frontend: HTML, CSS, Font Awesome
+## Technology Stack
 
-Authentication Summary
-----------------------
-- Patients and doctors sign up with email and profile details.
-- OTP is sent to the email address for verification.
-- Login uses email OTP only (no password required).
-- Doctors must be approved by an admin before accessing the doctor dashboard.
-- Admin login uses email and password.
+- **Backend:** Python, Flask 3, Flask Blueprints, Flask-SocketIO
+- **Database:** MongoDB through PyMongo
+- **Email:** Flask-Mail with Brevo SMTP
+- **Frontend:** Jinja2 templates, HTML, CSS, and Font Awesome
+- **Configuration:** `python-dotenv` and environment variables
+- **Production options:** Gunicorn and Eventlet are included in `requirements.txt`
 
-Email Notifications
--------------------
-MediConnect sends plain-text and HTML emails for key events:
-- Onboarding welcome emails after OTP verification (patients and doctors).
-- Doctor approval and rejection updates.
-- Appointment requested/accepted/rejected/completed updates.
-- Follow-up requested and scheduled updates.
-- Prescription issued notifications.
+## Project Structure
 
-Project Structure
------------------
-- app.py: Flask app entry point and mail setup
-- modules/auth.py: Authentication, dashboards, and core routes
-- templates/: HTML templates for all views
-- static/style.css: Application styles
-- requirements.txt: Python dependencies
-- userguide.md: End-user walkthrough and feature guide
+```text
+MediConnect/
+├── app.py                  # Flask application, MongoDB, mail, and Socket.IO setup
+├── modules/
+│   └── auth.py             # Blueprint, authentication, dashboards, and business routes
+├── templates/              # Jinja2 pages for public, patient, doctor, and admin views
+├── static/
+│   ├── style.css           # Shared application styles
+│   └── uploads/reports/    # Uploaded appointment reports
+├── requirements.txt        # Pinned Python dependencies
+├── userguide.md            # End-user walkthrough
+└── README.md               # Developer documentation
+```
 
-Environment Variables
----------------------
-Create a .env file in the project root with the following values:
+`app.py` creates the Flask application, configures MongoDB, email, uploads, and Socket.IO, registers the `auth` blueprint, and starts the server. Most application behavior currently lives in `modules/auth.py`.
 
+## Prerequisites
+
+- Python 3.10 or newer is recommended.
+- A running MongoDB deployment, either local or hosted.
+- A Brevo SMTP account, or another SMTP provider configured in `app.py`.
+- Git and a terminal capable of activating a Python virtual environment.
+
+## Configuration
+
+Create a `.env` file in the project root:
+
+```dotenv
 SECRET_KEY=your_flask_secret_key
 MONGO_URI=your_mongodb_connection_string
 BREVO_LOGIN=your_brevo_smtp_login
 BREVO_SMTP_KEY=your_brevo_smtp_key
 ADMIN_EMAIL=admin_email_for_notifications
+```
 
-Optional email configuration is defined in app.py and can be adjusted if you use a different SMTP provider.
+Variable reference:
 
-Setup
------
-1) Create and activate a virtual environment.
-2) Install dependencies:
+- `SECRET_KEY` signs Flask sessions. Use a long, random value outside local development.
+- `MONGO_URI` is the MongoDB connection string. The application uses the `mediconnect_db` database.
+- `BREVO_LOGIN` is the SMTP username or login.
+- `BREVO_SMTP_KEY` is the SMTP key or password.
+- `ADMIN_EMAIL` is the administrator email used for notifications and admin defaults.
 
-	pip install -r requirements.txt
+The SMTP host (`smtp-relay.brevo.com`), port (`2525`), and TLS settings are configured in `app.py`. Keep `.env` out of version control and never expose SMTP credentials in templates or client-side code.
 
-3) Configure the .env file.
-4) Start the app:
+## Installation and Local Development
 
-	python app.py
+1. Create and activate a virtual environment.
 
-The app runs at http://localhost:5000.
+   ```powershell
+   python -m venv .venv
+   .\\.venv\\Scripts\\Activate.ps1
+   ```
 
-Core User Flows
----------------
+   On macOS or Linux, activate it with `source .venv/bin/activate`.
 
-Patient Registration
---------------------
-1) Open Patient Registration.
-2) Enter profile details and email.
-3) Submit the form to receive an OTP.
-4) Verify OTP to complete registration and sign in.
+2. Install dependencies.
 
-Doctor Registration
--------------------
-1) Open Doctor Registration.
-2) Enter professional details and email.
-3) Submit the form to receive an OTP.
-4) Verify OTP to complete registration.
-5) Wait for admin approval before accessing the dashboard.
+   ```bash
+   python -m pip install --upgrade pip
+   pip install -r requirements.txt
+   ```
 
-Patient and Doctor Login
-------------------------
-1) Enter registered email.
-2) Click Send OTP.
-3) Verify the OTP to sign in.
+3. Create `.env` using the configuration above and confirm that MongoDB is reachable.
 
-Resend OTP
-----------
-If the OTP is not received, use the Resend Code action on the OTP page.
+4. Start the development server.
 
-Patient Features
-----------------
-- Dashboard summary for upcoming and completed appointments.
-- Book appointments with issue category and date; doctor confirms the time.
-- Choose General Physician for automatic doctor assignment.
-- Add intake details: symptoms, allergies, medications, conditions, vitals, and notes.
-- Upload medical reports with appointments.
-- View appointment status, chat, and join video calls.
-- Access medical records, prescriptions, and timeline history.
+   ```bash
+   python app.py
+   ```
+
+5. Open <http://localhost:5000>.
+
+The development server runs with Flask-SocketIO and debug mode enabled. Do not use debug mode or the built-in development server for production.
+
+## Authentication
+
+### Patients and Doctors
+
+1. A user submits the patient or doctor registration form.
+2. MediConnect generates a six-digit OTP and emails it to the submitted address.
+3. The user enters the OTP on `/verify-otp`.
+4. Registration data is stored in MongoDB after successful verification.
+5. A doctor remains pending until an administrator approves the account.
+
+Patient and doctor login also uses email OTP. A password field may be collected during registration, but it is not used for their login flow.
+
+### Administrator
+
+Administrators sign in at `/admin/login` with an email and password. Admin sessions can approve or reject doctors, manage departments and roles, inspect audit activity, and view verification documents.
+
+## Application Routes
+
+Public pages:
+
+- `/`: landing page and MongoDB connection status.
+- `/about`, `/contact`, `/privacy`, `/terms`: informational pages.
+
+Authentication:
+
+- `/register/patient` and `/register/doctor`: registration forms.
+- `/login/patient` and `/login/doctor`: request a login OTP.
+- `/verify-otp`: shared registration and login verification page.
+- `/resend-otp`: resend the current OTP.
+- `/logout`: end the active user session.
+
+Patient and doctor areas:
+
+- `/dashboard/patient` and `/dashboard/doctor`: role-specific dashboards.
+- `/patient/*`: appointments, doctors, records, prescriptions, timeline, profile, and settings.
+- `/doctor/*`: appointments, patients, schedule, reviews, profile, and settings.
+- `/appointments/*`: create, update, complete, cancel, review, notes, follow-ups, chat, and rerouting.
+
+Administration:
+
+- `/admin/login`, `/admin/logout`, and `/admin/dashboard`.
+- Admin actions include department management, doctor approval or rejection, role management, and access to verification documents.
+
+Most write operations use `POST` routes and require the appropriate session role. Route definitions are in `modules/auth.py`; templates should use Flask `url_for` rather than hard-coded route URLs.
+
+## User Workflows
+
+### Patient Workflow
+
+- Register and verify an email address with an OTP.
+- Browse approved doctors or choose General Physician for automatic assignment.
+- Book an appointment with an issue category, preferred date, intake details, and optional reports.
+- Track pending, accepted, rejected, cancelled, and completed appointments.
+- Chat with the doctor, open a video consultation link, and review the visit.
+- View medical records, prescriptions, follow-ups, and timeline history.
 - Manage profile and notification preferences.
-- Upload a profile photo.
-- Delete account immediately or schedule deletion in 30 days.
 
-Doctor Features
----------------
-- Dashboard overview for daily appointments and pending requests.
-- Accept or reject appointment requests and set the appointment time on approval.
-- Add consultation notes and prescriptions.
-- Mark appointments as completed.
-- Manage availability schedule.
-- View patients and reviews.
-- Manage profile and notification preferences.
-- Add a professional summary.
-- Upload a profile photo.
-- Upload verification documents during registration.
-- Delete account immediately or schedule deletion in 30 days.
+### Doctor Workflow
 
-Admin Features
---------------
-- Admin login with email and password.
-- Approve or reject pending doctor registrations.
-- Review audit logs and reports.
-- Manage user roles when required.
-- View doctor verification documents in approvals and user lists.
+- Register with professional details and verification documents.
+- Wait for administrator approval.
+- Configure availability, appointment limits, weekend availability, and minimum notice.
+- Accept or reject requests and set the confirmed appointment time.
+- Review patient details and uploaded reports.
+- Add consultation notes, prescriptions, follow-ups, and completion details.
+- Manage profile, reviews, notifications, and patient access controls.
 
-Mobile UX
----------
-- Patient bottom navigation: Home, Appointments, Book, Records, Profile.
-- Doctor bottom navigation: Home, Appointments, Schedule, Patients, Profile.
-- Landing page uses a hamburger menu on small screens.
+### Admin Workflow
 
-Supported Report File Types
----------------------------
-- pdf, png, jpg, jpeg, doc, docx
+- Sign in with admin credentials.
+- Review pending doctor accounts and verification documents.
+- Approve or reject doctors and send status notifications.
+- Manage departments and user roles.
+- Review audit records and administrative activity.
 
-Data Model Notes
-----------------
-MongoDB collections are created automatically when data is inserted. Common collections include:
-- users: patient, doctor, and admin records
-- appointments: appointment requests and statuses
-- availability: doctor availability slots
-- prescriptions: medication and dosage instructions
-- reviews: patient feedback
-- followups: follow-up requests
-- audit_logs: login and admin activity
+## Data and File Storage
 
-Operational Notes
------------------
-- OTP emails are sent via Brevo SMTP using the credentials in .env.
-- Doctors cannot log in until their status is approved.
-- Admin login still uses passwords and is not OTP-based.
-- Email notifications include both plain-text and HTML bodies.
-- Accounts marked for deletion cannot log in.
+MongoDB collections are created as data is inserted. Common collections include:
 
-Troubleshooting
----------------
-- OTP not received: check spam/junk folder, then resend.
-- Doctor cannot log in: verify approval status in admin dashboard.
-- File upload fails: confirm file type is supported and size is reasonable.
-- SMTP issues: confirm Brevo credentials and network access.
+- `users`: patient, doctor, and admin records.
+- `appointments`: requests, confirmed visits, statuses, notes, and links.
+- `availability`: doctor availability slots.
+- `availability_rules`: doctor scheduling rules.
+- `prescriptions`: medication and dosage instructions.
+- `reviews`: patient feedback.
+- `followups`: follow-up requests and scheduling details.
+- `audit_logs`: login and administrator activity.
 
-Security Considerations
------------------------
-- Use strong values for SECRET_KEY.
-- Keep SMTP credentials private.
-- Restrict admin access to trusted users only.
+Uploaded appointment reports are stored under `static/uploads/reports/`. Supported report extensions are `pdf`, `png`, `jpg`, `jpeg`, `doc`, and `docx`. Avatar uploads support `png`, `jpg`, and `jpeg`.
 
-License
--------
+The application currently relies on MongoDB and the local filesystem; it does not include migrations or a separate object-storage adapter. Back up both the database and uploaded files before moving environments.
+
+## Testing and Verification
+
+There is currently no dedicated automated test suite in the repository. For a local smoke test:
+
+1. Start MongoDB and the Flask application.
+2. Open the landing page and verify the displayed database status.
+3. Register a test patient and verify the emailed OTP.
+4. Register a test doctor, approve it from the admin dashboard, and verify doctor login.
+5. Create an appointment, upload a supported report, and test the appointment status flow.
+6. Open the appointment chat in two sessions and verify messages are delivered.
+7. Confirm that invalid file extensions and unauthorized dashboard access are rejected.
+
+When adding automated tests, isolate email and MongoDB behind test fixtures and use a separate test database.
+
+## Deployment Notes
+
+- Set a unique production `SECRET_KEY` and production MongoDB URI.
+- Disable Flask debug mode.
+- Use a production WSGI/Socket.IO server such as Gunicorn with the Eventlet worker when appropriate.
+- Configure the reverse proxy to support WebSocket upgrades for appointment chat.
+- Use HTTPS because the application handles health information, login OTPs, and uploaded documents.
+- Store uploaded reports outside the public web root or serve them through authenticated download routes in a production hardening pass.
+- Configure database backups, upload backups, log rotation, and monitoring.
+- Restrict administrator access and rotate SMTP credentials if they are exposed.
+
+## Troubleshooting
+
+- **OTP not received:** check spam or junk folders, verify SMTP credentials, then use Resend Code.
+- **Doctor cannot log in:** confirm that an administrator approved the doctor and that the account is not marked for deletion.
+- **Database shows Disconnected:** verify `MONGO_URI`, network access, MongoDB availability, and firewall rules.
+- **File upload fails:** confirm the extension is supported and that the upload directory is writable.
+- **Chat does not update:** confirm the Socket.IO connection, reverse-proxy WebSocket support, and that both users belong to the appointment.
+- **SMTP errors:** confirm Brevo credentials, sender configuration, TLS access, and network connectivity.
+
+## Security Checklist
+
+- Use a strong, random `SECRET_KEY`.
+- Keep `.env`, MongoDB credentials, SMTP keys, and uploaded medical documents private.
+- Run behind HTTPS in any environment containing real user data.
+- Restrict admin credentials and review `audit_logs` regularly.
+- Validate upload extensions, file sizes, filenames, and storage permissions.
+- Use a non-production database for development and testing.
+- Review session, CSRF, rate-limiting, OTP expiry, and access-control behavior before production use.
+- Treat this project as a demonstration until it has received a full privacy and security review for real medical data.
+
+## Related Documentation
+
+- [User guide](userguide.md)
+- [Dependency list](requirements.txt)
+
+## License
+
 This project is provided as-is for demonstration and learning purposes.
